@@ -1,3 +1,3 @@
 dropbox:
-  PERSONAL_FOLDER: Raphaël Bajon # your personal folder name in the group dropbox
+  PERSONAL_FOLDER: Your name # your personal folder name in the group dropbox
   DROPBOX_BASE_PATH: None # your group folder base path

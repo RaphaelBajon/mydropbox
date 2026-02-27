@@ -20,25 +20,12 @@ When working with shared Dropbox folders in a research group, hardcoding paths c
 ### Option 1: Install from GitHub (Recommended for Group)
 ```bash
 # Install directly from GitHub
-pip install git+https://github.com/[YOUR_GROUP]/mydropbox.git
+pip install git+https://github.com/raphaelbajon/mydropbox.git
 
 # Or clone and install
-git clone https://github.com/[YOUR_GROUP]/mydropbox.git
+git clone https://github.com/raphaelbajon/mydropbox.git
 cd mydropbox
 pip install -e .
-```
-
-### Option 2: Install from Local Directory
-```bash
-cd mydropbox_package
-pip install -e .
-```
-
-The `-e` flag installs in "editable" mode, so any changes you make to the library are immediately available.
-
-### Option 3: Add to Your Python Path
-```bash
-export PYTHONPATH="${PYTHONPATH}:/path/to/mydropbox_package"
 ```
 
 ## Usage
@@ -74,7 +61,6 @@ db = get_dropbox(personal_folder="Raphaël Bajon")
 ```python
 # 1. Copy mydropbox_config_template.py to mydropbox_config.py
 # 2. Edit mydropbox_config.py and set your name
-# 3. Add mydropbox_config.py to .gitignore (already done!)
 
 from config.mydropbox_config import PERSONAL_FOLDER
 from mydropbox import get_dropbox
@@ -82,19 +68,8 @@ from mydropbox import get_dropbox
 db = get_dropbox(personal_folder=PERSONAL_FOLDER)
 ```
 
-**Option 3: Using environment variables**
-```bash
-# In your ~/.bashrc or ~/.zshrc
-export DROPBOX_PERSONAL_FOLDER="Your Name"
-```
+**Option 3: Group access only (no personal paths)**
 
-```python
-import os
-from mydropbox import get_dropbox
-db = get_dropbox(personal_folder=os.getenv("DROPBOX_PERSONAL_FOLDER"))
-```
-
-**Option 4: Group access only (no personal paths)**
 ```python
 from mydropbox import dropbox
 
@@ -108,16 +83,6 @@ shared_data = dropbox.group.datasets / "observations.nc"
 The library uses Python's `pathlib.Path` objects, which are more powerful than strings:
 
 ```python
-from mydropbox import dropbox
-
-# Check if a file exists
-data_path = dropbox.personal.datasets / "surface_pco2.nc"
-if data_path.exists():
-    print(f"Found data at {data_path}")
-
-# List all Python files in your code directory
-for py_file in dropbox.personal.mycode.glob("*.py"):
-    print(py_file.name)
 
 # Read a file
 readme = (dropbox.personal.projects / "README.md").read_text()
@@ -138,7 +103,7 @@ db = get_dropbox("/custom/path/to/UHM_Ocean_BGC_Group Dropbox")
 print(db.personal.datasets)
 ```
 
-### Available Paths
+### Examples of Available Paths (that I have on my personal dropbox)
 
 #### Personal Paths (`dropbox.personal`)
 - `admin` - Administrative documents
@@ -152,7 +117,6 @@ print(db.personal.datasets)
 - `soc_tools` - Southern Ocean Carbon tools
 - `team` - Team collaboration files
 - `utils` - Utility scripts and tools
-- `pco2_adjusted` - Adjusted pCO2 data (2023_06)
 
 #### Group Paths (`dropbox.group`)
 - `assorted_content` - Miscellaneous shared content
@@ -164,7 +128,7 @@ print(db.personal.datasets)
 
 ## Project Management
 
-MyDropbox includes a powerful project management module to create standardized research project structures:
+:smirk: MyDropbox includes a powerful project management module to create [standardized research project structures](#project-structure):
 
 ```python
 from mydropbox import get_dropbox, create_project
@@ -175,17 +139,20 @@ db = get_dropbox(personal_folder="Your Name")
 # Create a new project with standardized structure
 project = create_project(
     base_path=db.personal.projects,
-    name="antarctic_carbon_flux_2026",
+    name="Project_01",
     template="full",  # or "simple" or "minimal"
-    description="Analysis of Antarctic carbon flux",
+    description="Description of Project_01",
     author="Your Name"
 )
 
-# Use the project structure
-raw_data = project.data.raw / "argo_floats.nc"
-processed = project.data.processed / "flux_analysis.nc"
-figure = project.plots.publication / "figure1.png"
-notebook = project.notebooks / "01_analysis.ipynb"
+# Use the project structure to access your paths within your project in a few words!
+project.data.raw # raw data
+project.data.processed # processed data
+project.notebooks # notebooks
+project.src # source code
+project.plots.explanatory # explanatory figures
+project.plots.publication # figures for publication
+# and many more..
 ```
 
 ### Project Structure
@@ -220,8 +187,7 @@ import matplotlib.pyplot as plt
 db = get_dropbox(personal_folder="Your Name")
 
 # Load data
-data_path = db.personal.datasets / "soc_carbon_flux.nc"
-ds = xr.open_dataset(data_path)
+ds = xr.open_dataset(db.personal.datasets / "soc_carbon_flux.nc")
 
 # Analyze
 flux_mean = ds.carbon_flux.mean(dim='time')
@@ -258,24 +224,7 @@ print(f"Project structure created at {project_dir}")
 
 ### Sharing Code with Collaborators
 
-```python
-from mydropbox import get_dropbox
-import xarray as xr
-
-def load_group_dataset(filename, personal_folder=None):
-    """
-    Load a dataset from the group shared folder.
-    Works for everyone in the group!
-    """
-    db = get_dropbox(personal_folder=personal_folder)
-    path = db.group.datasets / filename
-    if not path.exists():
-        raise FileNotFoundError(f"Dataset not found: {filename}")
-    return xr.open_dataset(path)
-
-# This works for everyone, regardless of their personal folder name
-ds = load_group_dataset("sst_climatology.nc")
-```
+You can easily share code with collaborators!
 
 ## Tips
 
