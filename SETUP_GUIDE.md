@@ -6,11 +6,7 @@ Welcome to MyDropbox! This guide will help you get started quickly.
 
 ```bash
 # If your group has it on GitHub:
-pip install git+https://github.com/[YOUR_GROUP]/mydropbox.git
-
-# Or if you have the files locally:
-cd /path/to/mydropbox_package
-pip install -e .
+pip install git+https://github.com/raphaelbajon/mydropbox.git
 ```
 
 ## Step 2: Configure Your Personal Folder
@@ -55,29 +51,6 @@ data = db.personal.datasets / "my_file.nc"
 
 **Pros**: Private, not shared in Git  
 **Cons**: One extra file
-
-### Option C: Environment Variable
-
-1. **Add to your shell config** (`~/.bashrc`, `~/.zshrc`, etc.):
-   ```bash
-   export DROPBOX_PERSONAL_FOLDER="Your Name"
-   ```
-
-2. **Reload your shell**:
-   ```bash
-   source ~/.bashrc  # or ~/.zshrc
-   ```
-
-3. **Use in your code**:
-   ```python
-   import os
-   from mydropbox import get_dropbox
-   
-   db = get_dropbox(personal_folder=os.getenv("DROPBOX_PERSONAL_FOLDER"))
-   ```
-
-**Pros**: Works across all your scripts, very private  
-**Cons**: Requires shell configuration
 
 ## Step 3: Test It Out
 
@@ -195,4 +168,4 @@ Make sure:
 
 ---
 
-**Welcome to the group! Happy coding! 🌊**
+**Welcome to the group dropbox library! Happy coding! 🌊**

@@ -339,7 +339,6 @@ from mydropbox import get_dropbox, create_project
 # 1. Create project
 db = get_dropbox(personal_folder="Your Name")
 project = create_project(db.personal.projects, "my_new_project")
-
 # 2. Add data to raw/
 # 3. Create a notebook in notebooks/
 # 4. Write processing code in src/
@@ -384,7 +383,7 @@ datasets = project.list_datasets("all")
 
 ```python
 project.create_metadata(
-    description="Antarctic carbon flux analysis using ML",
+    description="flux analysis using ML",
     author="Your Name",
     tags=["carbon-cycle", "machine-learning", "southern-ocean", "2026"]
 )
@@ -408,37 +407,7 @@ if project.base.exists():
     print("Project found!")
 ```
 
-## Tips for Southern Ocean Carbon Research
-
-### Typical Project Structure
-
-```python
-project = create_project(
-    db.personal.projects,
-    "soc_carbon_flux_analysis",
-    template="full"
-)
-
-# Organize by data type
-project.data.raw / "argo_floats.nc"
-project.data.raw / "satellite_sst.nc"
-project.data.raw / "model_output.nc"
-
-# Process separately
-project.data.interim / "argo_qc.nc"
-project.data.interim / "sst_regridded.nc"
-
-# Combine for analysis
-project.data.processed / "combined_analysis_dataset.nc"
-
-# Results
-project.results / "flux_estimates.csv"
-project.results / "model_coefficients.pkl"
-
-# Figures for paper
-project.plots.publication / "figure1_map.png"
-project.plots.publication / "figure2_timeseries.png"
-```
+## Tips
 
 ### Recommended File Naming
 
@@ -479,4 +448,4 @@ shutil.copy(
 
 ---
 
-**For more examples, see** `examples_projects.py`
+**For more examples, see** [the example](docs/examples/examples_projects.py) `examples_projects.py` 

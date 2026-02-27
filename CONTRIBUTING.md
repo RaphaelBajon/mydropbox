@@ -134,7 +134,7 @@ Examples:
 ## Testing
 
 Before submitting:
-1. Run the examples: `python examples.py`
+1. Run the examples: `python docs/examples/examples.py` (:sleeping:)
 2. Test in your own scripts
 3. Check that paths resolve correctly
 4. Verify cross-platform compatibility if possible
@@ -154,4 +154,4 @@ Before submitting:
 
 ---
 
-Thank you for contributing to the UHM Ocean BGC Group! 🙏
+Thank you for contributing to the UHM Ocean BGC Group dropbox! 🙏

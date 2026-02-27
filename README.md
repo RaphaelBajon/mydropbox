@@ -128,7 +128,7 @@ print(db.personal.datasets)
 
 ## Project Management
 
-:smirk: MyDropbox includes a powerful project management module to create [standardized research project structures](#project-structure):
+:smirk: MyDropbox includes a powerful project management module to create [standardized research project structures](#project-structure). See [the Projects Guide](PROJECTS_GUIDE.md) for all the explanations of this feature!
 
 ```python
 from mydropbox import get_dropbox, create_project
