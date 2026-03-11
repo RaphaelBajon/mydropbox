@@ -169,10 +169,6 @@ def load_argo_data(data_dir: Path, year: int):
     """Load BGC-Argo data for a specific year."""
     file_path = data_dir / f"argo_{year}.nc"
     return xr.open_dataset(file_path)
-
-def filter_southern_ocean(ds: xr.Dataset, lat_min: float = -60, lat_max: float = -40):
-    """Filter dataset to Southern Ocean latitudes."""
-    return ds.sel(latitude=slice(lat_min, lat_max))
 ```
 
 Then use in notebooks or scripts:
@@ -182,10 +178,9 @@ Then use in notebooks or scripts:
 import sys
 sys.path.insert(0, '../src')
 
-from data.load_data import load_argo_data, filter_southern_ocean
+from data.load_data import load_argo_data
 
 ds = load_argo_data(project.data.raw, 2025)
-ds_filtered = filter_southern_ocean(ds)
 ```
 
 ### Example 4: List All Datasets
@@ -212,8 +207,6 @@ import pickle
 # Train a model (example)
 model_results = {
     'rmse': 0.23,
-    'r2': 0.89,
-    'coefficients': np.array([1.2, -0.5, 0.8])
 }
 
 # Save to results/
@@ -260,6 +253,9 @@ final.to_netcdf(project.data.processed / "analysis_ready.nc")
 ### 3. Separate Exploratory and Publication Plots
 
 ```python
+# can work directly with plt.savefig()
+plt.savefig(project.plot.explanatory / "fig01.png", dpi=200)
+
 # Quick exploration (lower quality, not version controlled)
 fig_explore = quick_timeseries_plot(data)
 project.save_figure(fig_explore, "quick_check.png", location="exploratory", dpi=100)
@@ -329,54 +325,6 @@ import shutil
 shutil.copy(group_data, project.data.raw / "observations.nc")
 ```
 
-## Common Workflows
-
-### Workflow 1: Start a New Analysis
-
-```python
-from mydropbox import get_dropbox, create_project
-
-# 1. Create project
-db = get_dropbox(personal_folder="Your Name")
-project = create_project(db.personal.projects, "my_new_project")
-# 2. Add data to raw/
-# 3. Create a notebook in notebooks/
-# 4. Write processing code in src/
-# 5. Save results to results/
-# 6. Create publication figures in plots/publication/
-```
-
-### Workflow 2: Reproduce Someone's Analysis
-
-```python
-from mydropbox.projects import ProjectPaths
-
-# Open their project
-project = ProjectPaths("/path/to/their/project")
-
-# Check what data they used
-datasets = project.list_datasets("all")
-
-# Run their analysis scripts
-# Look in project.src for scripts
-# Check project.readme for instructions
-```
-
-### Workflow 3: Share Your Work
-
-```python
-# Your project is already organized!
-# Just share the project folder
-
-# Others can access:
-# - Your code in src/
-# - Your processed data in data/processed/
-# - Your figures in plots/publication/
-# - Your documentation in README.md
-
-# Raw data stays in data/raw/ (add to .gitignore if too large)
-```
-
 ## Advanced Features
 
 ### Custom Metadata
@@ -389,22 +337,6 @@ project.create_metadata(
 )
 
 # Creates project_metadata.json with timestamps and info
-```
-
-### Programmatic Access
-
-```python
-# Get all paths as a dictionary
-paths = {
-    'raw': project.data.raw,
-    'processed': project.data.processed,
-    'notebooks': project.notebooks,
-    'src': project.src.base,
-}
-
-# Check if project exists
-if project.base.exists():
-    print("Project found!")
 ```
 
 ## Tips
@@ -442,7 +374,7 @@ A: Copy to the group datasets folder:
 import shutil
 shutil.copy(
     project.data.processed / "my_analysis.nc",
-    db.group.datasets / "my_analysis.nc"
+    db.group.datasets / "new_grouppath_to_my_analysis.nc"
 )
 ```
 
