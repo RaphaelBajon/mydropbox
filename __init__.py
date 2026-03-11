@@ -14,9 +14,10 @@ __license__ = "MIT"
 # Import project management
 from .project import ProjectPaths, create_project
 # Import dropbox management
-from .dropbox import get_dropbox, DropboxPaths, PersonalPaths, GroupPaths
-from .config.loadconfig import _load_config
+from .dropbox import get_dropbox, DropboxPaths, PersonalPaths, GroupPaths 
+from .dropbox.utils import check_sync_status, auto_discover_paths
 
+from .config.loadconfig import _load_config
 
 __all__ = [
     "DropboxPaths",
