@@ -1,0 +1,2 @@
+PERSONAL_FOLDER = "Raphaël Bajon"
+DROPBOX_BASE_PATH = None

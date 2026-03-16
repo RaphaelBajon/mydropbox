@@ -1,0 +1,8 @@
+{
+  "personal_folder": "",
+  "dropbox_base_path": null,
+  "comments": {
+    "personal_folder": "Your personal folder name within the group Dropbox (e.g., 'John Doe')",
+    "dropbox_base_path": "Custom Dropbox path (leave null for auto-detection). Example: '/Users/you/Dropbox/UHM_Ocean_BGC_Group Dropbox'"
+  }
+}
