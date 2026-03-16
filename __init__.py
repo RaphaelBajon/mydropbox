@@ -27,6 +27,8 @@ __all__ = [
     "GroupPaths",
     "PersonalPaths",
     "dropbox",
+    "check_sync_status",
+    "auto_discover_paths",
 ]
 
 
