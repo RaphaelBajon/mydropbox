@@ -41,7 +41,7 @@ data = db.personal.datasets / "my_file.nc"
 
 3. **Use in your code**:
    ```python
-   from config.mydropbox_config import PERSONAL_FOLDER
+   from mydropbox.config.mydropbox_config import PERSONAL_FOLDER
    from mydropbox import get_dropbox
    
    db = get_dropbox(personal_folder=PERSONAL_FOLDER)
@@ -57,7 +57,7 @@ Create a test script:
 from mydropbox import get_dropbox
 
 # Initialize (using Option A for this test)
-db = get_dropbox(personal_folder="Your Name")  # Use YOUR actual name!
+db = get_dropbox(personal_folder="Your Name")  # Use YOUR actual name
 
 # Test group paths
 print("Group datasets folder:", db.group.datasets)
@@ -80,49 +80,10 @@ python test_mydropbox.py
 
 You should see your Dropbox paths printed out!
 
-## Common Issues
-
-### "ModuleNotFoundError: No module named 'mydropbox'"
-
-The package isn't installed. Run:
-```bash
-pip install -e /path/to/mydropbox_package
-```
-
-### "ModuleNotFoundError: No module named 'mydropbox_config'"
-
-You're using Option B but haven't created `mydropbox_config.py`. Either:
-- Create it from the template, OR
-- Use Option A (direct specification) instead
-
-### "AttributeError: 'NoneType' object has no attribute 'datasets'"
-
-You're trying to access `db.personal` but didn't specify `personal_folder`. Use:
-```python
-db = get_dropbox(personal_folder="Your Name")
-```
-
-### Paths don't exist
-
-Make sure:
-1. Your Dropbox folder name is correct (check in Finder/Explorer)
-2. Your personal folder name matches exactly (including spaces, accents, etc.)
-3. Dropbox is actually synced to your computer
-
 ## Next Steps
 
 - Read the [README.md](README.md) for detailed usage examples
-- Check [QUICKREF.md](QUICKREF.md) for a quick reference
+- Check [PROJECTS_GUIDE.md](PROJECTS_GUIDE.md) for a project setup
 - See [examples.py](docs/examples/examples.py) for code examples
 - Read [CONTRIBUTING.md](CONTRIBUTING.md) if you want to add features
 
-## Getting Help
-
-- Check if your issue is in "Common Issues" above
-- Look at the examples in [examples.py](docs/examples/examples.py)
-- Ask your colleagues in the group
-- Open an issue on GitHub
-
----
-
-**Welcome to the group dropbox library! Happy coding! 🌊**
