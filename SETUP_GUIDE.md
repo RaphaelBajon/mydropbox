@@ -11,7 +11,7 @@ pip install git+https://github.com/raphaelbajon/mydropbox.git
 
 ## Step 2: Configure Your Personal Folder
 
-You have three options to set your personal folder name:
+You have 2 options to set your personal folder name:
 
 ### Option A: Direct in Code (Simplest)
 
@@ -49,9 +49,6 @@ data = db.personal.datasets / "my_file.nc"
 
 4. **Important**: `mydropbox_config.py` is already in `.gitignore`, so your name won't be pushed to GitHub!
 
-**Pros**: Private, not shared in Git  
-**Cons**: One extra file
-
 ## Step 3: Test It Out
 
 Create a test script:
@@ -82,46 +79,6 @@ python test_mydropbox.py
 ```
 
 You should see your Dropbox paths printed out!
-
-## Step 4: Use It in Your Work
-
-### In Jupyter Notebooks
-
-At the top of your notebook:
-
-```python
-from config.mydropbox_config import PERSONAL_FOLDER
-from mydropbox import get_dropbox
-import xarray as xr
-
-# Initialize once
-db = get_dropbox(personal_folder=PERSONAL_FOLDER)
-
-# Now use it throughout your notebook
-ds = xr.open_dataset(db.personal.datasets / "my_data.nc")
-```
-
-### In Scripts
-
-```python
-#!/usr/bin/env python
-"""My analysis script"""
-
-from config.mydropbox_config import PERSONAL_FOLDER
-from mydropbox import get_dropbox
-
-
-def main():
-    db = get_dropbox(personal_folder=PERSONAL_FOLDER)
-
-    # Your code here
-    data_file = db.personal.datasets / "flux_data.nc"
-    # ...
-
-
-if __name__ == "__main__":
-    main()
-```
 
 ## Common Issues
 
