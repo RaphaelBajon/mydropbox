@@ -1,6 +1,7 @@
 import sys
 import os
 from pathlib import Path
+import json
 
 
 def _find_config_file():
