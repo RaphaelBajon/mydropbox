@@ -39,6 +39,13 @@ class TestCreateProject:
         assert project.data.processed.exists()
         assert not project.data.interim.exists()  # not in minimal template
 
+    def test_invalid_template_raises(self, tmp_path):
+        from mydropbox.project.projects import ProjectPaths
+
+        project = ProjectPaths(tmp_path / "proj")
+        with pytest.raises(ValueError, match="Unknown template"):
+            project.create_structure(template="typo")
+
     def test_repr(self, tmp_path):
         from mydropbox.project.projects import ProjectPaths
 
@@ -139,3 +146,58 @@ class TestListDatasets:
 
         result = project.list_datasets(location="raw", pattern="*.nc")
         assert len(result["raw"]) == 2
+
+    def test_list_minimal_no_crash(self, tmp_path):
+        """list_datasets(location='all') must not crash when interim is absent."""
+        from mydropbox.project.projects import create_project
+
+        project = create_project(tmp_path, "minimal_list", template="minimal")
+        result = project.list_datasets(location="all")
+        # interim dir was never created — key must be absent, not an error
+        assert "interim" not in result
+        assert "raw" in result
+        assert "processed" in result
+
+class TestProjectExpand:
+    def test_data_expand_discovers_subdirs(self, tmp_path):
+        """DataPaths.expand() discovers sub-dirs created after init."""
+        from mydropbox.dropbox.base_path import DiscoverablePaths
+        from mydropbox.project.projects import create_project
+
+        project = create_project(tmp_path, "exp_proj", template="full")
+        # Add a new nested folder after project creation
+        new_dir = project.data.processed / "cruise_2025"
+        new_dir.mkdir()
+        # Without expand, the new dir is not yet an attribute
+        assert "cruise_2025" not in project.data.processed.__dict__
+        project.data.processed.expand(1)
+        assert isinstance(project.data.processed.cruise_2025, DiscoverablePaths)
+
+    def test_plots_expand_returns_self_for_chaining(self, tmp_path):
+        from mydropbox.dropbox.base_path import DiscoverablePaths
+        from mydropbox.project.projects import create_project
+
+        project = create_project(tmp_path, "chain_proj", template="full")
+        (project.plots.exploratory / "argo").mkdir()
+        node = project.plots.exploratory.expand(1).argo
+        assert isinstance(node, DiscoverablePaths)
+
+    def test_project_expand_refreshes_sub_trees(self, tmp_path):
+        """ProjectPaths.expand() re-discovers data / src / plots sub-trees."""
+        from mydropbox.dropbox.base_path import DiscoverablePaths
+        from mydropbox.project.projects import create_project
+
+        project = create_project(tmp_path, "refresh_proj", template="full")
+        (project.src.models / "v2").mkdir()
+        project.expand(2)
+        assert isinstance(project.src.models.v2, DiscoverablePaths)
+
+    def test_src_expand_does_not_break_standard_attrs(self, tmp_path):
+        """Standard attrs (data, features, …) stay accessible after expand()."""
+        from mydropbox.project.projects import create_project
+
+        project = create_project(tmp_path, "attrs_proj", template="full")
+        project.src.expand(1)
+        # Standard subdirs should still resolve correctly
+        assert project.src.models.exists()
+        assert project.src.features.exists()
