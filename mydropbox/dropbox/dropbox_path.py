@@ -56,7 +56,7 @@ class DropboxPaths:
             self.personal = None
 
     def __repr__(self):
-        personal_info = f", personal_folder='{self.personal.base.name}'" if self.personal else ""
+        personal_info = f", personal_folder='{self.personal}'" if self.personal else ""
         return f"DropboxPaths(base_path='{self.base_path}'{personal_info})"
 
 

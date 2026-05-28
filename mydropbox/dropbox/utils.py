@@ -95,36 +95,51 @@ def check_sync_status(path: Union[str, Path], download_if_online: bool = False) 
 
 
 def _check_sync_macos(path: Path) -> Dict[str, bool]:
-    """Check Dropbox sync status on macOS using xattr."""
+    """Check Dropbox sync status on macOS.
+
+    Strategy: compare the reported file size against actual disk usage.
+    Dropbox Smart Sync online-only files appear as sparse files whose
+    disk-block count is 0 while st_size is non-zero.  This is more
+    reliable than the previous heuristic of treating all files < 1 KB
+    as online-only (which incorrectly flagged small real files).
+    """
     try:
-        import xattr
-        
-        # Dropbox uses extended attributes to mark file status
-        # com.dropbox.attributes contains sync status
-        attrs = xattr.xattr(path)
-        
-        # Check for Dropbox-specific attributes
-        dropbox_attrs = [attr for attr in attrs if b'dropbox' in attr.lower()]
-        
-        # If file has content, it's synced
-        # Online-only files have minimal local presence
         if path.is_file():
-            size = path.stat().st_size
-            # Files < 1KB are likely placeholders (online-only)
-            is_online_only = size < 1024 and len(dropbox_attrs) > 0
+            stat = path.stat()
+            reported_size = stat.st_size
+            # st_blocks is in 512-byte units; 0 blocks on a non-empty
+            # file means the content is not stored locally.
+            disk_bytes = stat.st_blocks * 512
+            is_online_only = reported_size > 0 and disk_bytes == 0
         else:
-            # For directories, check if children are accessible
+            # For directories check whether children are accessible
+            try:
+                next(path.iterdir())
+            except StopIteration:
+                pass  # empty dir is fine
             is_online_only = False
-            
+
+        # Also check xattr for Dropbox Smart Sync marker when available
+        try:
+            import xattr
+            attrs = xattr.xattr(path)
+            # Attribute names are str on modern xattr releases
+            has_dropbox_attr = any(
+                'dropbox' in (a if isinstance(a, str) else a.decode('utf-8', errors='ignore')).lower()
+                for a in attrs
+            )
+            # If no Dropbox attribute at all, file is not managed by Dropbox
+            if not has_dropbox_attr and path.is_file():
+                is_online_only = False
+        except ImportError:
+            pass  # xattr unavailable; rely on disk-blocks check alone
+
         return {
             'is_synced': not is_online_only,
             'is_online_only': is_online_only,
             'is_syncing': False,
         }
-        
-    except ImportError:
-        # xattr not available, fall back to file size check
-        return _check_sync_fallback(path)
+
     except Exception:
         return _check_sync_fallback(path)
 
@@ -155,30 +170,9 @@ def _check_sync_windows(path: Path) -> Dict[str, bool]:
 
 
 def _check_sync_linux(path: Path) -> Dict[str, bool]:
-    """Check Dropbox sync status on Linux using extended attributes."""
-    try:
-        import xattr
-        
-        attrs = xattr.xattr(path)
-        dropbox_attrs = [attr for attr in attrs if b'dropbox' in attr.lower()]
-        
-        # Similar logic to macOS
-        if path.is_file():
-            size = path.stat().st_size
-            is_online_only = size < 1024 and len(dropbox_attrs) > 0
-        else:
-            is_online_only = False
-            
-        return {
-            'is_synced': not is_online_only,
-            'is_online_only': is_online_only,
-            'is_syncing': False,
-        }
-        
-    except ImportError:
-        return _check_sync_fallback(path)
-    except Exception:
-        return _check_sync_fallback(path)
+    """Check Dropbox sync status on Linux using sparse-file detection."""
+    # Same sparse-file strategy as macOS
+    return _check_sync_macos(path)
 
 
 def _check_sync_fallback(path: Path) -> Dict[str, bool]:

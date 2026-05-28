@@ -278,8 +278,12 @@ config/local_config.yml
             data.to_netcdf(path, **kwargs)
         elif hasattr(data, 'to_csv'):  # pandas
             data.to_csv(path, **kwargs)
-        elif hasattr(data, 'save'):  # numpy, torch, etc.
-            data.save(str(path), **kwargs)
+        elif type(data).__module__.startswith('numpy'):
+            import numpy as np
+            np.save(path, data, **kwargs)
+        elif type(data).__module__.startswith('torch'):
+            import torch
+            torch.save(data, path, **kwargs)
         else:
             raise TypeError(f"Don't know how to save {type(data)}")
         

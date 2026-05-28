@@ -133,10 +133,8 @@ print(db.personal.datasets)
 ```python
 from mydropbox import get_dropbox, create_project
 
-# Initialize
 db = get_dropbox(personal_folder="Your Name")
 
-# Create a new project with standardized structure
 project = create_project(
     base_path=db.personal.projects,
     name="Project_01",
@@ -145,34 +143,15 @@ project = create_project(
     author="Your Name"
 )
 
-# Use the project structure to access your paths within your project in a few words!
-project.data.raw # raw data
-project.data.processed # processed data
-project.notebooks # notebooks
-project.src # source code
-project.plots.explanatory # explanatory figures
-project.plots.publication # figures for publication
-# and many more..
+project.data.raw        # raw data
+project.data.processed  # processed data
+project.notebooks       # notebooks
+project.src             # source code
+project.plots.exploratory  # exploratory figures
+project.plots.publication  # figures for publication
 ```
 
-### Project Structure
-
-Projects follow data science best practices with:
-- **data/** - Raw, interim, and processed data (separate folders)
-- **src/** - Reusable source code (data, features, models, visualization)
-- **notebooks/** - Jupyter notebooks for exploration
-- **plots/** - Exploratory and publication-ready figures
-- **docs/** - Documentation
-- **reports/** - Generated reports
-- **results/** - Model outputs and predictions
-- **config/** - Configuration files
-
-Auto-generated files:
-- `README.md` - Project documentation template
-- `.gitignore` - Configured for data science (excludes large data files)
-- `project_metadata.json` - Automated metadata tracking
-
-**For detailed project management documentation, see [PROJECTS_GUIDE.md](PROJECTS_GUIDE.md)**
+**For the full project structure, templates, and examples, see [PROJECTS_GUIDE.md](PROJECTS_GUIDE.md)**
 
 ## Example Workflows
 
@@ -201,50 +180,12 @@ plt.savefig(fig_path)
 print(f"Figure saved to {fig_path}")
 ```
 
-### Organizing Your Code
-
-```python
-from mydropbox import get_dropbox
-
-# Initialize once at the top of your script
-db = get_dropbox(personal_folder="Your Name")
-
-# Create a consistent project structure
-project_name = "antarctic_upwelling_2026"
-project_dir = db.personal.projects / project_name
-
-# Create subdirectories
-(project_dir / "data").mkdir(parents=True, exist_ok=True)
-(project_dir / "figures").mkdir(exist_ok=True)
-(project_dir / "notebooks").mkdir(exist_ok=True)
-(project_dir / "scripts").mkdir(exist_ok=True)
-
-print(f"Project structure created at {project_dir}")
-```
-
-### Sharing Code with Collaborators
-
-You can easily share code with collaborators!
-
 ## Tips
 
 1. **Use Path objects**: They handle cross-platform differences automatically
 2. **Check existence**: Always verify files exist before opening them
 3. **Create directories**: Use `path.mkdir(parents=True, exist_ok=True)` to avoid errors
 4. **Relative paths**: Build paths dynamically for maximum flexibility
-
-## Extending the Library
-
-You can easily add new paths or helper functions:
-
-```python
-# In mydropbox/__init__.py
-class PersonalPaths:
-    def __init__(self, base_path: Path):
-        self.base = base_path
-        # Add your new paths here
-        self.new_folder = self.base / "new_folder_name"
-```
 
 ## License
 
@@ -273,7 +214,7 @@ See [CHANGELOG.md](CHANGELOG.md) for version history and changes.
 
 ## Acknowledgments
 
-Developed for the UHM Ocean BGC Group for Southern Ocean Carbon cycle research.
+Developed for the UHM Ocean BGC Research Group.
 
 ---
 

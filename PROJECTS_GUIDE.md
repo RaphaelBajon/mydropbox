@@ -254,7 +254,7 @@ final.to_netcdf(project.data.processed / "analysis_ready.nc")
 
 ```python
 # can work directly with plt.savefig()
-plt.savefig(project.plot.explanatory / "fig01.png", dpi=200)
+plt.savefig(project.plots.exploratory / "fig01.png", dpi=200)
 
 # Quick exploration (lower quality, not version controlled)
 fig_explore = quick_timeseries_plot(data)
@@ -301,30 +301,6 @@ with open(config_file) as f:
     config = yaml.safe_load(f)
 ```
 
-## Integration with Dropbox
-
-The project structure works seamlessly with MyDropbox:
-
-```python
-from mydropbox import get_dropbox, create_project
-
-db = get_dropbox(personal_folder="Your Name")
-
-# Create project in your Dropbox
-project = create_project(
-    db.personal.projects,  # Projects folder in Dropbox
-    "my_analysis"
-)
-
-# Access both Dropbox and project paths
-group_data = db.group.datasets / "shared_observations.nc"  # Shared data
-my_processed = project.data.processed / "my_analysis.nc"    # Your processed data
-
-# Copy group data to your project
-import shutil
-shutil.copy(group_data, project.data.raw / "observations.nc")
-```
-
 ## Advanced Features
 
 ### Custom Metadata
@@ -355,7 +331,7 @@ project.create_metadata(
 **Q: Can I customize the structure?**  
 A: Yes! After creating a project, you can add your own folders:
 ```python
-project.base / "manuscripts" ).mkdir(exist_ok=True)
+(project.base / "manuscripts").mkdir(exist_ok=True)
 (project.base / "presentations").mkdir(exist_ok=True)
 ```
 
