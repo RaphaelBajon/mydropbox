@@ -1,15 +1,19 @@
 from pathlib import Path
+from typing import Optional
+
+from mydropbox.dropbox.base_path import DiscoverablePaths
 
 
-class SourcePaths:
+class SourcePaths(DiscoverablePaths):
     """Paths for source code directories."""
 
-    def __init__(self, base_path: Path):
-        self.base = base_path
-        self.data = base_path / "data"  # Data loading/processing
-        self.features = base_path / "features"  # Feature engineering
-        self.models = base_path / "models"  # Model training
-        self.visualization = base_path / "visualization"  # Plotting
+    def __init__(self, base_path: Path, max_depth: Optional[int] = 2):
+        super().__init__(base_path, max_depth=max_depth)
+        self.base = self._path  # backward compat
+        # Ensure standard attrs exist as plain Paths if dirs not yet created
+        for name in ("data", "features", "models", "visualization"):
+            if name not in self.__dict__:
+                setattr(self, name, self._path / name)
 
     def __repr__(self):
-        return f"SourcePaths('{self.base}')"
+        return f"SourcePaths('{self._path}')"

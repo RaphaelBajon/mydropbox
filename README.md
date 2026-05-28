@@ -1,281 +1,95 @@
 # MyDropbox
 
-A Python library for managing UHM Ocean BGC Group Dropbox paths in your research code.
+A Python library for managing UHM Ocean BGC Group Dropbox paths in research code.
 
-[![Python Version](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/)
+[![Python Version](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-0.1.0-green.svg)](CHANGELOG.md)
 
-## Why This Library?
+## Why?
 
-When working with shared Dropbox folders in a research group, hardcoding paths can lead to:
-- Code that breaks when folder structures change
-- Non-portable scripts that don't work on colleagues' machines
-- Difficult-to-maintain codebases with scattered path definitions
-
-`mydropbox` centralizes all your common Dropbox paths in one place, making your code cleaner and more maintainable.
+Hardcoded Dropbox paths break on other machines and when folders are renamed. `mydropbox` auto-discovers your Dropbox tree and exposes every folder as a chainable Python attribute — no configuration needed.
 
 ## Installation
 
-### Option 1: Install from GitHub (Recommended for Group)
 ```bash
-# Install directly from GitHub
 pip install git+https://github.com/raphaelbajon/mydropbox.git
-
-# Or clone and install
-git clone https://github.com/raphaelbajon/mydropbox.git
-cd mydropbox
-pip install -e .
+# or clone and install locally
+git clone https://github.com/raphaelbajon/mydropbox.git && pip install -e mydropbox
 ```
 
-## Usage
-
-### Quick Start
+## Quick Start
 
 ```python
 from mydropbox import get_dropbox
 
-# Initialize with your personal folder name
 db = get_dropbox(personal_folder="Your Name")
 
-# Access your personal folders
-data_file = db.personal.datasets / "my_ocean_data.nc"
-code_dir = db.personal.mycode / "analysis_scripts"
-paper_draft = db.personal.papers / "carbon_cycle_2026.docx"
+# Group folders
+db.group.datasets / "observations.nc"
+db.group.collaborative_projects
 
-# Access group folders (works without personal_folder too)
-group_data = db.group.datasets / "shared_observations.nc"
-meeting_notes = db.group.group_notes / "2026-01-meeting.md"
+# Personal folders
+db.personal.mycode / "scripts"
+db.personal.projects / "new_analysis"
 ```
 
-### Configuration Options
+## Configuration
 
-**Option 1: Direct specification (simplest)**
+**Inline (simplest)**
 ```python
-from mydropbox import get_dropbox
 db = get_dropbox(personal_folder="Raphaël Bajon")
 ```
 
-**Option 2: Using a config file (recommended for privacy)**
-
+**Config file (recommended — keeps your name out of shared code)**
 ```python
-# 1. Copy mydropbox_config_template.py to mydropbox_config.py
-# 2. Edit mydropbox_config.py and set your name
-
-from config.mydropbox_config import PERSONAL_FOLDER
-from mydropbox import get_dropbox
-
+# 1. Copy and edit: cp mydropbox_config_template.py mydropbox_config.py
+# 2. Set PERSONAL_FOLDER = "Your Name" in that file
+from mydropbox.config.mydropbox_config import PERSONAL_FOLDER
 db = get_dropbox(personal_folder=PERSONAL_FOLDER)
 ```
 
-**Option 3: Group access only (no personal paths)**
-
+**Group only**
 ```python
-from mydropbox import dropbox
-
-# Only group paths are available
-shared_data = dropbox.group.datasets / "observations.nc"
-# dropbox.personal is None
+db = get_dropbox()   # personal is None
+db.group.datasets / "shared.nc"
 ```
 
-### Working with Paths
+## Discovery Depth
 
-The library uses Python's `pathlib.Path` objects, which are more powerful than strings:
-
-```python
-
-# Read a file
-readme = (dropbox.personal.projects / "README.md").read_text()
-
-# Create subdirectories
-new_project = dropbox.personal.projects / "new_analysis"
-new_project.mkdir(exist_ok=True)
-```
-
-### Custom Dropbox Location
-
-If your Dropbox is in a non-standard location:
+By default, `get_dropbox` discovers 2 levels deep for fast startup. Adjust with `group_depth` / `personal_depth`:
 
 ```python
-from mydropbox import get_dropbox
-
-db = get_dropbox("/custom/path/to/UHM_Ocean_BGC_Group Dropbox")
-print(db.personal.datasets)
+db = get_dropbox(personal_folder="Your Name", group_depth=1, personal_depth=3)
 ```
 
-### Examples of Available Paths (that I have on my personal dropbox)
-
-#### Personal Paths (`dropbox.personal`)
-- `admin` - Administrative documents
-- `datasets` - Your personal datasets
-- `meeting` - Meeting notes and agendas
-- `mycode` - Your code repository
-- `papers` - Research papers and manuscripts
-- `phd` - PhD-related materials
-- `projects` - Research projects
-- `slides` - Presentation slides
-- `soc_tools` - Southern Ocean Carbon tools
-- `team` - Team collaboration files
-- `utils` - Utility scripts and tools
-
-#### Group Paths (`dropbox.group`)
-- `assorted_content` - Miscellaneous shared content
-- `collaborative_projects` - Group collaborative projects
-- `datasets` - Shared group datasets
-- `group_notes` - Group meeting notes and documentation
-- `lab_field_data` - Laboratory and field data
-- `ocean_reports` - Ocean observation reports
-
-## Project Management
-
-:smirk: MyDropbox includes a powerful project management module to create [standardized research project structures](#project-structure). See [the Projects Guide](PROJECTS_GUIDE.md) for all the explanations of this feature!
+Drill deeper into a specific branch at runtime without re-loading everything:
 
 ```python
-from mydropbox import get_dropbox, create_project
+db.group.datasets.expand(2)          # 2 more levels from here
+db.group.datasets.argo.floats_2025   # now accessible
 
-# Initialize
-db = get_dropbox(personal_folder="Your Name")
-
-# Create a new project with standardized structure
-project = create_project(
-    base_path=db.personal.projects,
-    name="Project_01",
-    template="full",  # or "simple" or "minimal"
-    description="Description of Project_01",
-    author="Your Name"
-)
-
-# Use the project structure to access your paths within your project in a few words!
-project.data.raw # raw data
-project.data.processed # processed data
-project.notebooks # notebooks
-project.src # source code
-project.plots.explanatory # explanatory figures
-project.plots.publication # figures for publication
-# and many more..
+# Chain directly
+node = db.group.datasets.expand(2).argo
 ```
 
-### Project Structure
+## Full pathlib API
 
-Projects follow data science best practices with:
-- **data/** - Raw, interim, and processed data (separate folders)
-- **src/** - Reusable source code (data, features, models, visualization)
-- **notebooks/** - Jupyter notebooks for exploration
-- **plots/** - Exploratory and publication-ready figures
-- **docs/** - Documentation
-- **reports/** - Generated reports
-- **results/** - Model outputs and predictions
-- **config/** - Configuration files
-
-Auto-generated files:
-- `README.md` - Project documentation template
-- `.gitignore` - Configured for data science (excludes large data files)
-- `project_metadata.json` - Automated metadata tracking
-
-**For detailed project management documentation, see [PROJECTS_GUIDE.md](PROJECTS_GUIDE.md)**
-
-## Example Workflows
-
-### Data Analysis Script
+Every node is a `pathlib.Path`-compatible object. All `Path` methods work at every level:
 
 ```python
-from mydropbox import get_dropbox
-import xarray as xr
-import matplotlib.pyplot as plt
+db.group.datasets.exists()
+db.group.datasets.glob("*.nc")
+db.personal.projects.iterdir()
+db.personal.mycode.stat()
 
-# Initialize with your personal folder
-db = get_dropbox(personal_folder="Your Name")
-
-# Load data
-ds = xr.open_dataset(db.personal.datasets / "soc_carbon_flux.nc")
-
-# Analyze
-flux_mean = ds.carbon_flux.mean(dim='time')
-
-# Save figure
-fig_path = db.personal.projects / "flux_analysis" / "mean_flux.png"
-fig_path.parent.mkdir(exist_ok=True)
-plt.figure()
-flux_mean.plot()
-plt.savefig(fig_path)
-print(f"Figure saved to {fig_path}")
+# Path join
+file = db.group.datasets / "cruise_2025.nc"   # returns plain Path
 ```
 
-### Organizing Your Code
+## Projects
 
-```python
-from mydropbox import get_dropbox
-
-# Initialize once at the top of your script
-db = get_dropbox(personal_folder="Your Name")
-
-# Create a consistent project structure
-project_name = "antarctic_upwelling_2026"
-project_dir = db.personal.projects / project_name
-
-# Create subdirectories
-(project_dir / "data").mkdir(parents=True, exist_ok=True)
-(project_dir / "figures").mkdir(exist_ok=True)
-(project_dir / "notebooks").mkdir(exist_ok=True)
-(project_dir / "scripts").mkdir(exist_ok=True)
-
-print(f"Project structure created at {project_dir}")
-```
-
-### Sharing Code with Collaborators
-
-You can easily share code with collaborators!
-
-## Tips
-
-1. **Use Path objects**: They handle cross-platform differences automatically
-2. **Check existence**: Always verify files exist before opening them
-3. **Create directories**: Use `path.mkdir(parents=True, exist_ok=True)` to avoid errors
-4. **Relative paths**: Build paths dynamically for maximum flexibility
-
-## Extending the Library
-
-You can easily add new paths or helper functions:
-
-```python
-# In mydropbox/__init__.py
-class PersonalPaths:
-    def __init__(self, base_path: Path):
-        self.base = base_path
-        # Add your new paths here
-        self.new_folder = self.base / "new_folder_name"
-```
+See [PROJECTS_GUIDE.md](PROJECTS_GUIDE.md) for creating and managing standardized research project structures.
 
 ## License
 
-MIT License - Feel free to modify for your research needs.
-
-## Contributing
-
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-To contribute:
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## Changelog
-
-See [CHANGELOG.md](CHANGELOG.md) for version history and changes.
-
-## Support
-
-- **Issues**: Open an issue on GitHub
-- **Group discussions**: Bring it up in lab meetings
-- **Questions**: Check the examples or documentation
-
-## Acknowledgments
-
-Developed for the UHM Ocean BGC Group for Southern Ocean Carbon cycle research.
-
----
-
-**Current Version**: 0.1.0  
-**Last Updated**: January 28, 2026
+MIT — free to modify for your research needs. See [CONTRIBUTING.md](CONTRIBUTING.md) to contribute.

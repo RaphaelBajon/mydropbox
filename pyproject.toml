@@ -8,7 +8,28 @@ version = "0.1.0"
 authors = [{name = "Raphaël Bajon"}]
 description = "A library for managing UHM Ocean BGC Group Dropbox paths"
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.12"
+# Core library has no mandatory external dependencies.
+# The scientific stack below is optional but expected for typical usage.
+dependencies = []
+
+[project.optional-dependencies]
+science = [
+    "xarray",
+    "numpy",
+    "matplotlib",
+    "pandas",
+]
+dev = [
+    "xarray",
+    "numpy",
+    "matplotlib",
+    "pandas",
+    "scipy",
+    "pytest",
+    "pytest-cov",
+    "ruff",
+]
 
 [tool.setuptools.packages.find]
 where = ["."]
