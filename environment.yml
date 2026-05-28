@@ -1,0 +1,15 @@
+# Runtime environment — install this to use the library.
+# conda env create -f environment.yml
+name: mydropbox-env
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.12
+  - xarray
+  - numpy
+  - matplotlib
+  - pandas
+  - pip
+  - pip:
+      - -e .

@@ -1,0 +1,19 @@
+# Development environment — includes test and linting tools.
+# conda env create -f environment-dev.yml
+name: mydropbox-dev-env
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.12
+  - xarray
+  - numpy
+  - matplotlib
+  - pandas
+  - scipy            # used in tests
+  - pytest
+  - pytest-cov
+  - ruff             # linter / formatter
+  - pip
+  - pip:
+      - -e .
