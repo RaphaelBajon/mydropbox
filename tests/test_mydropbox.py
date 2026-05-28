@@ -18,16 +18,17 @@ import pytest
 
 @pytest.fixture
 def tmp_dropbox(tmp_path):
-    """Create a minimal fake Dropbox directory tree."""
+    """Create a minimal fake Dropbox directory tree with nested subdirectories."""
     group = tmp_path / "group"
-    (group / "datasets").mkdir(parents=True)
+    (group / "datasets" / "argo" / "floats_2025").mkdir(parents=True)
+    (group / "datasets" / "argo" / "floats_2024").mkdir(parents=True)
     (group / "group_notes").mkdir(parents=True)
     (group / "collaborative_projects").mkdir(parents=True)
 
     personal = tmp_path / "My Name"
     (personal / "mycode").mkdir(parents=True)
-    (personal / "datasets").mkdir(parents=True)
-    (personal / "projects").mkdir(parents=True)
+    (personal / "datasets" / "processed").mkdir(parents=True)
+    (personal / "projects" / "project_01" / "data").mkdir(parents=True)
 
     return tmp_path
 
@@ -50,6 +51,7 @@ class TestDiscoverablePaths:
         assert issubclass(PersonalPaths, DiscoverablePaths)
 
     def test_auto_discovery(self, tmp_dropbox):
+        from mydropbox.dropbox.base_path import DiscoverablePaths
         from mydropbox.dropbox.group_path import GroupPaths
 
         gp = GroupPaths(tmp_dropbox / "group")
@@ -58,6 +60,46 @@ class TestDiscoverablePaths:
         assert "datasets" in paths
         assert "group_notes" in paths
         assert "collaborative_projects" in paths
+        # Values are DiscoverablePaths, not plain Path objects
+        assert all(isinstance(v, DiscoverablePaths) for v in paths.values())
+
+    def test_recursive_attribute_chaining(self, tmp_dropbox):
+        """With max_depth=None the full tree is available at any depth."""
+        from mydropbox.dropbox.base_path import DiscoverablePaths
+        from mydropbox.dropbox.group_path import GroupPaths
+
+        gp = GroupPaths(tmp_dropbox / "group", max_depth=None)
+
+        # Level 1
+        assert isinstance(gp.datasets, DiscoverablePaths)
+        # Level 2
+        assert isinstance(gp.datasets.argo, DiscoverablePaths)
+        # Level 3
+        assert isinstance(gp.datasets.argo.floats_2025, DiscoverablePaths)
+        # Correct underlying path
+        assert gp.datasets.argo.floats_2025._path == (
+            tmp_dropbox / "group" / "datasets" / "argo" / "floats_2025"
+        )
+
+    def test_recursive_personal_chaining(self, tmp_dropbox):
+        from mydropbox.dropbox.base_path import DiscoverablePaths
+        from mydropbox.dropbox.personal_path import PersonalPaths
+
+        pp = PersonalPaths(tmp_dropbox / "My Name", max_depth=None)
+
+        assert isinstance(pp.projects.project_01.data, DiscoverablePaths)
+        assert pp.projects.project_01.data._path == (
+            tmp_dropbox / "My Name" / "projects" / "project_01" / "data"
+        )
+
+    def test_chained_truediv(self, tmp_dropbox):
+        """/ operator at any chained level must return a plain Path."""
+        from mydropbox.dropbox.group_path import GroupPaths
+
+        gp = GroupPaths(tmp_dropbox / "group")
+        result = gp.datasets.argo / "my_file.nc"
+        assert isinstance(result, Path)
+        assert result == tmp_dropbox / "group" / "datasets" / "argo" / "my_file.nc"
 
     def test_truediv_operator(self, tmp_dropbox):
         from mydropbox.dropbox.group_path import GroupPaths
@@ -121,6 +163,71 @@ class TestDiscoverablePaths:
         gp = GroupPaths(tmp_dropbox / "group")
         assert gp.name == "group"
 
+    def test_path_api_delegation(self, tmp_dropbox):
+        """Any pathlib.Path method not explicitly defined must still work."""
+        from mydropbox.dropbox.group_path import GroupPaths
+
+        gp = GroupPaths(tmp_dropbox / "group")
+
+        # Properties delegated via __getattr__
+        assert gp.exists()
+        assert gp.is_dir()
+        assert not gp.is_file()
+        assert gp.stem == "group"
+        assert gp.suffix == ""
+        assert gp.parent == tmp_dropbox
+        # Methods delegated via __getattr__
+        children = list(gp.iterdir())
+        assert len(children) > 0
+        nc_files = list(gp.rglob("*.nc"))
+        assert isinstance(nc_files, list)
+        resolved = gp.resolve()
+        assert resolved == (tmp_dropbox / "group").resolve()
+
+    def test_max_depth_zero_no_children(self, tmp_dropbox):
+        """max_depth=0 must not discover any children."""
+        from mydropbox.dropbox.group_path import GroupPaths
+
+        gp = GroupPaths(tmp_dropbox / "group", max_depth=0)
+        assert gp.get_all_paths() == {}
+
+    def test_max_depth_one_no_grandchildren(self, tmp_dropbox):
+        """max_depth=1 discovers children but not grandchildren."""
+        from mydropbox.dropbox.base_path import DiscoverablePaths
+        from mydropbox.dropbox.group_path import GroupPaths
+
+        gp = GroupPaths(tmp_dropbox / "group", max_depth=1)
+        # Child exists
+        assert isinstance(gp.datasets, DiscoverablePaths)
+        # Grandchild (argo) NOT eagerly discovered — not in __dict__
+        assert "argo" not in gp.datasets.__dict__
+
+    def test_max_depth_two_has_grandchildren(self, tmp_dropbox):
+        """max_depth=2 (default) discovers children and grandchildren."""
+        from mydropbox.dropbox.base_path import DiscoverablePaths
+        from mydropbox.dropbox.group_path import GroupPaths
+
+        gp = GroupPaths(tmp_dropbox / "group", max_depth=2)
+        assert isinstance(gp.datasets.argo, DiscoverablePaths)
+        # Great-grandchildren (floats_2025) NOT in __dict__ at depth=2
+        assert "floats_2025" not in gp.datasets.argo.__dict__
+
+    def test_max_depth_three_has_great_grandchildren(self, tmp_dropbox):
+        """max_depth=3 discovers three levels."""
+        from mydropbox.dropbox.base_path import DiscoverablePaths
+        from mydropbox.dropbox.group_path import GroupPaths
+
+        gp = GroupPaths(tmp_dropbox / "group", max_depth=3)
+        assert isinstance(gp.datasets.argo.floats_2025, DiscoverablePaths)
+
+    def test_max_depth_none_unlimited(self, tmp_dropbox):
+        """max_depth=None discovers the full tree."""
+        from mydropbox.dropbox.base_path import DiscoverablePaths
+        from mydropbox.dropbox.group_path import GroupPaths
+
+        gp = GroupPaths(tmp_dropbox / "group", max_depth=None)
+        assert isinstance(gp.datasets.argo.floats_2025, DiscoverablePaths)
+
 
 # ---------------------------------------------------------------------------
 # DropboxPaths / get_dropbox
@@ -140,6 +247,25 @@ class TestDropboxPaths:
         db = get_dropbox(base_path=str(tmp_dropbox), personal_folder="My Name")
         assert db.personal is not None
         assert db.personal.name == "My Name"
+
+    def test_get_dropbox_depth_params(self, tmp_dropbox):
+        """group_depth and personal_depth are forwarded correctly."""
+        from mydropbox.dropbox.base_path import DiscoverablePaths
+        from mydropbox.dropbox.dropbox_path import get_dropbox
+
+        db = get_dropbox(
+            base_path=str(tmp_dropbox),
+            personal_folder="My Name",
+            group_depth=1,
+            personal_depth=3,
+        )
+        # group_depth=1: tmp_dropbox's immediate children ("group", "My Name") are
+        # discovered but their own children are NOT.
+        assert isinstance(db.group.group, DiscoverablePaths)
+        assert "datasets" not in db.group.group.__dict__  # NOT eagerly discovered
+
+        # personal_depth=3: three levels under personal are all discovered eagerly.
+        assert isinstance(db.personal.projects.project_01.data, DiscoverablePaths)
 
     def test_repr(self, tmp_dropbox):
         from mydropbox.dropbox.dropbox_path import get_dropbox
