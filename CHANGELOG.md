@@ -7,9 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Planned
-- Add support for custom folder configurations (if `PersonalPaths` not in the `GroupPath`)
-- Add helper functions for common file operations
+## [0.2.0] - 2026-05-28
+
+### Added
+- `DiscoverablePaths` base class shared by `GroupPaths` and `PersonalPaths` — eliminates duplication and provides a single extension point
+- Recursive directory discovery: every subdirectory is a `DiscoverablePaths` instance, enabling chained access (`db.group.datasets.argo.floats_2025`)
+- `max_depth` parameter on `get_dropbox()` (`group_depth`, `personal_depth`) to control eager discovery depth at startup (default: 2)
+- `expand(depth)` method on every node — drill deeper into a specific branch at runtime without re-scanning the whole tree
+- Full `pathlib.Path` API at every level via transparent `__getattr__` delegation
+- `DataPaths`, `PlotPaths`, `SourcePaths` now inherit `DiscoverablePaths` — `expand()` works on project sub-trees too
+- `ProjectPaths` inherits `DiscoverablePaths` with a typed `_discover_all_paths()` override; custom folders added after creation are auto-discovered
+- `template` parameter on `ProjectPaths.__init__` when `auto_create=True`
+- `environment.yml` and `environment-dev.yml` conda environment files
+
+### Fixed
+- `_check_sync_macos`: replaced fragile size heuristic with sparse-file detection (`st_blocks`); fixed `bytes`/`str` mismatch in xattr lookup
+- `save_dataset`: numpy and torch branches now use `np.save()` / `torch.save()` correctly
+- `create_structure()` raises `ValueError` on unknown template names instead of silently falling through to `"full"`
+- `list_datasets()` no longer crashes when a data sub-directory was not created by the chosen template
+- `create_metadata()` writes with explicit `utf-8` encoding
+
+### Changed
+- `requires-python` bumped to `>=3.12`
+- `pyproject.toml` dependencies split into `[science]` and `[dev]` optional groups
+- Tests split from a single `test_mydropbox.py` into focused files: `test_discoverable_paths.py`, `test_dropbox_paths.py`, `test_project_paths.py`, `test_utils.py`
 
 ## [0.1.0] - 2026-03-16
 
