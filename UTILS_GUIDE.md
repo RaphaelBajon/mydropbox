@@ -37,6 +37,27 @@ else:
     ds = xr.open_dataset(data_file)
 ```
 
+### Limitations
+
+| Capability | macOS | Linux (lab PC) | Notes |
+|---|---|---|---|
+| Detect online-only file | ✅ | ✅ | macOS: `com.dropbox.placeholder` xattr; Linux: `st_blocks==0` |
+| Detect online-only directory | ✅ | ✅ | recursively scans file descendants |
+| Download / hydrate | ✅ | ✅ | macOS: `NSFileCoordinator`; Linux: plain file open |
+| Evict back to online-only | ❌ | ✅ | macOS: no public API (use Finder → right-click → Online only); Linux: `dropbox smart-sync online-only` |
+| Empty directory | ℹ️ | ℹ️ | Always `is_synced=True` — no content to download |
+
+### `evict_to_online_only()` — Linux only
+
+```python
+from mydropbox import evict_to_online_only
+
+# Linux only — evict a file or folder back to online-only
+evict_to_online_only(db.personal.datasets / "large_data.nc")
+
+# On macOS this raises NotImplementedError with a clear message
+```
+
 ---
 
 ## `auto_discover_paths()` — Manual path discovery

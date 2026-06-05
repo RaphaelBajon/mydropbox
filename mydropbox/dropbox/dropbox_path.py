@@ -26,24 +26,30 @@ class DropboxPaths:
                       or uses ~/Dropbox/UHM_Ocean_BGC_Group Dropbox
             personal_folder: Name of your personal folder within the group Dropbox.
                            If None, personal paths will not be initialized.
-                           Example: "Raphaël Bajon", "John Doe", etc.
+                           Example: "John Doe", etc.
             group_depth: How many directory levels to discover eagerly under
                         ``db.group``.  1 = immediate children only (fastest);
                         2 = children + grandchildren (default);  None = full tree.
             personal_depth: Same as ``group_depth`` but for ``db.personal``.
         """
+        self._base_path_found = False
         if base_path is None:
             # Try common Dropbox locations
             possible_paths = [
+                # personal computer options
                 Path.home() / "UHM_Ocean_BGC_Group Dropbox",
                 Path.home() / "Dropbox" / "UHM_Ocean_BGC_Group Dropbox",
                 Path.home() / "Library" / "CloudStorage" / "Dropbox" / "UHM_Ocean_BGC_Group Dropbox",
-                Path("/Users") / os.getenv("USER", "") / "Dropbox" / "UHM_Ocean_BGC_Group Dropbox"
+                Path("/Users") / os.getenv("USER", "") / "Dropbox" / "UHM_Ocean_BGC_Group Dropbox",
+                Path("/Users") / os.getenv("USER", "") / "UHM_Ocean_BGC_Group Dropbox",
+                # labpc option
+                Path("/mnt/md0/group_data/UHM_Ocean_BGC_Group Dropbox"),
             ]
 
             for path in possible_paths:
                 if path.exists():
                     self.base_path = path
+                    self._base_path_found = True
                     break
             else:
                 # Default fallback
@@ -53,10 +59,27 @@ class DropboxPaths:
 
         # Initialize group paths (always available)
         self.group = GroupPaths(self.base_path, max_depth=group_depth)
+        
+        self._configure_for_labpc = False
+        self._configure_for_persopc = False
+
+        if self.group.parts[1] == 'mnt':
+            self._configure_for_labpc = True
+            path_lab_fixed = {
+                'Seth Bushinsky': 'seth',
+                'Raphaël Bajon': 'raph',
+                'Zachary Nachod': 'zach',
+                'Haichao Guo': 'haichao',
+                }
+        else:
+            self._configure_for_persopc = True
 
         # Initialize personal paths only if personal_folder is specified
-        if personal_folder is not None:
+        if personal_folder is not None and self._configure_for_persopc:
             self.personal = PersonalPaths(self.base_path / personal_folder, max_depth=personal_depth)
+        elif personal_folder is not None and self._configure_for_labpc:
+            # On labpc, personal folders are under /mnt/md0/group_data/personal/
+            self.personal = PersonalPaths(self.base_path.parent.parent / path_lab_fixed[personal_folder] / "UHM_Ocean_BGC_Group Dropbox" / personal_folder, max_depth=personal_depth)
         else:
             self.personal = None
 

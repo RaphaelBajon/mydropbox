@@ -8,7 +8,7 @@ version = "0.2.0"
 authors = [{name = "Raphaël Bajon"}]
 description = "A library for managing UHM Ocean BGC Group Dropbox paths"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 # Core library has no mandatory external dependencies.
 # The scientific stack below is optional but expected for typical usage.
 dependencies = []

@@ -35,6 +35,16 @@ def check_sync_status(path: Union[str, Path], download_if_online: bool = False) 
             'downloaded': bool,  # True if download was triggered
         }
     
+    Notes:
+        - **Downloading** (``download_if_online=True``) works automatically on
+          macOS via ``NSFileCoordinator`` and on Linux via a plain file open.
+        - **Evicting back to online-only** is NOT possible programmatically.
+          Dropbox does not expose a public API for this.  Use Finder:
+          right-click the file → Dropbox → Online only.
+        - **Empty directories** always report ``is_synced=True``.  There are
+          no files inside to mark as online-only, so the concept does not
+          apply — an empty folder has nothing to download.
+
     Example:
         >>> status = check_sync_status(dropbox.personal.datasets / "large_file.nc")
         >>> if status['is_online_only']:
@@ -57,176 +67,349 @@ def check_sync_status(path: Union[str, Path], download_if_online: bool = False) 
     if not path.exists():
         result['error'] = "Path does not exist"
         return result
-    
+
     result['exists_locally'] = True
-    
-    # Get platform-specific Dropbox attributes
-    system = platform.system()
-    
+
     try:
-        if system == "Darwin":  # macOS
-            # Check extended attributes for Dropbox status
-            result.update(_check_sync_macos(path))
-            
-        elif system == "Windows":
-            # Check file attributes on Windows
-            result.update(_check_sync_windows(path))
-            
-        elif system == "Linux":
-            # Check extended attributes on Linux
-            result.update(_check_sync_linux(path))
-            
+        # Try the Dropbox CLI first — most accurate source of truth
+        cli_result = _check_sync_via_cli(path)
+        if cli_result is not None:
+            result.update(cli_result)
         else:
-            result['error'] = f"Unsupported platform: {system}"
-            return result
-        
-        # If download requested and file is online-only, trigger download
+            # Fall back to OS-level heuristics
+            result.update(_check_sync_sparse(path))
+
+        # Trigger download if requested
         if download_if_online and result['is_online_only']:
             success = _trigger_download(path)
             result['downloaded'] = success
             if success:
                 result['is_syncing'] = True
                 result['is_online_only'] = False
-                
+
     except Exception as e:
         result['error'] = str(e)
-    
+
     return result
 
 
-def _check_sync_macos(path: Path) -> Dict[str, bool]:
-    """Check Dropbox sync status on macOS.
+# Dropbox CLI locations to try in order
+_DROPBOX_CLI_CANDIDATES = [
+    "dropbox",  # in PATH
+    os.path.expanduser("~/.dropbox-dist/dropboxd"),
+    "/Applications/Dropbox.app/Contents/MacOS/dropbox",
+    "/usr/local/bin/dropbox",
+    "/usr/bin/dropbox",
+]
 
-    Strategy: compare the reported file size against actual disk usage.
-    Dropbox Smart Sync online-only files appear as sparse files whose
-    disk-block count is 0 while st_size is non-zero.  This is more
-    reliable than the previous heuristic of treating all files < 1 KB
-    as online-only (which incorrectly flagged small real files).
+# Linux-only CLI candidates for evict_to_online_only
+_LINUX_CLI_CANDIDATES = [
+    "dropbox",
+    os.path.expanduser("~/.dropbox-dist/dropboxd"),
+    "/usr/local/bin/dropbox",
+    "/usr/bin/dropbox",
+]
+
+
+def _check_sync_via_cli(path: Path) -> Optional[Dict[str, bool]]:
+    """Try ``dropbox filestatus <path>`` and parse the output.
+
+    Returns a status dict only when the CLI is available **and** returns a
+    recognised status string.  Returns ``None`` in all other cases so the
+    caller falls back to sparse-file detection.
+
+    Known Dropbox CLI statuses: "up to date", "syncing", "sync error",
+    "unwatched", "selective sync excluded", "online only".
+    """
+    _KNOWN_STATUSES = {
+        "up to date", "syncing", "sync error",
+        "unwatched", "selective sync excluded", "online only",
+    }
+
+    for cli in _DROPBOX_CLI_CANDIDATES:
+        try:
+            proc = subprocess.run(
+                [cli, "filestatus", str(path)],
+                capture_output=True, text=True, timeout=5,
+            )
+            if proc.returncode != 0:
+                continue
+            # Output: "/path/to/file: up to date\n"
+            raw = proc.stdout.strip().lower()
+            # Strip the path prefix (everything up to and including the last colon)
+            status = raw.split(":", maxsplit=1)[-1].strip()
+            if status not in _KNOWN_STATUSES:
+                # Binary exists but gave unrecognised/empty output — not a
+                # proper Dropbox CLI; try the next candidate.
+                continue
+            return {
+                'is_synced': status == "up to date",
+                'is_online_only': "online" in status,
+                'is_syncing': status == "syncing",
+            }
+        except (FileNotFoundError, subprocess.TimeoutExpired, OSError, PermissionError):
+            continue
+    return None
+
+
+def _has_dropbox_placeholder_xattr(path: Path) -> bool:
+    """Return True if ``path`` has the ``com.dropbox.placeholder`` xattr.
+
+    Dropbox sets this xattr on every file that is online-only (Smart Sync).
+    It is typically NOT set on directories — individual files inside are
+    marked instead.  An empty directory will always return False here.
+
+    Uses ctypes to call the macOS ``getxattr(2)`` syscall directly; returns
+    False on any error.
     """
     try:
-        if path.is_file():
-            stat = path.stat()
-            reported_size = stat.st_size
-            # st_blocks is in 512-byte units; 0 blocks on a non-empty
-            # file means the content is not stored locally.
-            disk_bytes = stat.st_blocks * 512
-            is_online_only = reported_size > 0 and disk_bytes == 0
-        else:
-            # For directories check whether children are accessible
-            try:
-                next(path.iterdir())
-            except StopIteration:
-                pass  # empty dir is fine
-            is_online_only = False
-
-        # Also check xattr for Dropbox Smart Sync marker when available
-        try:
-            import xattr
-            attrs = xattr.xattr(path)
-            # Attribute names are str on modern xattr releases
-            has_dropbox_attr = any(
-                'dropbox' in (a if isinstance(a, str) else a.decode('utf-8', errors='ignore')).lower()
-                for a in attrs
-            )
-            # If no Dropbox attribute at all, file is not managed by Dropbox
-            if not has_dropbox_attr and path.is_file():
-                is_online_only = False
-        except ImportError:
-            pass  # xattr unavailable; rely on disk-blocks check alone
-
-        return {
-            'is_synced': not is_online_only,
-            'is_online_only': is_online_only,
-            'is_syncing': False,
-        }
-
+        import ctypes, ctypes.util
+        _libc = ctypes.CDLL(ctypes.util.find_library("c"), use_errno=True)
+        path_b = str(path).encode("utf-8", errors="surrogateescape")
+        attr_b = b"com.dropbox.placeholder"
+        result = _libc.getxattr(path_b, attr_b, None, 0, 0, 0)
+        return result >= 0
     except Exception:
-        return _check_sync_fallback(path)
+        return False
 
 
-def _check_sync_windows(path: Path) -> Dict[str, bool]:
-    """Check Dropbox sync status on Windows."""
+def _check_sync_sparse(path: Path) -> Dict[str, bool]:
+    """Detect online-only paths via OS-level heuristics (macOS + Linux).
+
+    macOS (Dropbox Smart Sync / File Provider)
+    ------------------------------------------
+    Dropbox sets the ``com.dropbox.placeholder`` extended attribute on every
+    file that has not been downloaded locally.  Directories never get this
+    xattr directly; to detect whether a directory's contents are online-only,
+    we scan its immediate file children for the placeholder xattr.
+
+    Note: ``SF_DATALESS`` and ``st_blocks == 0`` are NOT reliable on macOS
+    APFS — the File Provider extension does not consistently set them.
+
+    Linux (legacy Smart Sync)
+    -------------------------
+    Online-only files appear as sparse placeholders: ``st_size > 0`` but
+    ``st_blocks == 0`` (no disk blocks allocated).  Directories cannot be
+    detected without the CLI.
+
+    Detecting *currently syncing* is not possible without the CLI.
+    """
     try:
-        import win32api
-        import win32con
-        
-        # Get file attributes
-        attrs = win32api.GetFileAttributes(str(path))
-        
-        # Check for offline/sparse file attributes
-        is_online_only = bool(attrs & win32con.FILE_ATTRIBUTE_OFFLINE)
-        
+        if platform.system() == "Darwin":
+            if path.is_file():
+                is_online_only = _has_dropbox_placeholder_xattr(path)
+            else:
+                # Check the directory itself first (rare but possible),
+                # then fall back to scanning immediate file children.
+                # An empty directory has no files to mark as placeholders
+                # so it will always report is_online_only=False — this is
+                # correct: there is no content to download.
+                if _has_dropbox_placeholder_xattr(path):
+                    is_online_only = True
+                else:
+                    # Recursively scan all file descendants for placeholder xattr.
+                    # An empty directory (or one with no files) always returns False.
+                    is_online_only = any(
+                        _has_dropbox_placeholder_xattr(child)
+                        for child in path.rglob("*")
+                        if child.is_file() and not child.name.startswith('.')
+                    )
+        elif path.is_file():
+            # Linux: sparse-file heuristic; st_blocks is in 512-byte units
+            st = path.stat()
+            is_online_only = st.st_size > 0 and st.st_blocks == 0
+        else:
+            # Linux directories: recursively scan file descendants
+            is_online_only = any(
+                (f.stat().st_size > 0 and f.stat().st_blocks == 0)
+                for f in path.rglob("*")
+                if f.is_file() and not f.name.startswith('.')
+            )
+
         return {
             'is_synced': not is_online_only,
             'is_online_only': is_online_only,
             'is_syncing': False,
         }
-        
-    except ImportError:
-        # win32api not available, fall back
-        return _check_sync_fallback(path)
     except Exception:
         return _check_sync_fallback(path)
-
-
-def _check_sync_linux(path: Path) -> Dict[str, bool]:
-    """Check Dropbox sync status on Linux using sparse-file detection."""
-    # Same sparse-file strategy as macOS
-    return _check_sync_macos(path)
 
 
 def _check_sync_fallback(path: Path) -> Dict[str, bool]:
-    """
-    Fallback sync check when platform-specific methods unavailable.
-    Uses heuristics based on file size and accessibility.
-    """
+    """Last-resort fallback: try to read the file to confirm it is local."""
     try:
         if path.is_file():
-            # Try to read first byte to ensure file is accessible
             with open(path, 'rb') as f:
                 f.read(1)
-            is_synced = True
         else:
-            # For directories, check if we can list contents
-            list(path.iterdir())
-            is_synced = True
-            
-        return {
-            'is_synced': is_synced,
-            'is_online_only': False,
-            'is_syncing': False,
-        }
-        
+            next(path.iterdir(), None)
+        return {'is_synced': True, 'is_online_only': False, 'is_syncing': False}
     except (OSError, PermissionError):
-        # If we can't access it, assume online-only
-        return {
-            'is_synced': False,
-            'is_online_only': True,
-            'is_syncing': False,
-        }
+        return {'is_synced': False, 'is_online_only': True, 'is_syncing': False}
 
 
 def _trigger_download(path: Path) -> bool:
+    """Trigger Dropbox Smart Sync download of an online-only path.
+
+    On macOS, the correct way to hydrate a File Provider placeholder is via
+    ``NSFileCoordinator`` — a coordinated read signals the File Provider
+    extension to fetch the content.  Plain ``open()`` / ``read()`` bypasses
+    the coordination layer and does NOT reliably hydrate placeholders.
+
+    We invoke a tiny Swift one-liner via ``subprocess`` so we don't need
+    PyObjC.  On Linux (legacy Smart Sync), a plain ``open()`` is sufficient
+    because there is no File Provider layer.
+
+    For directories, every immediate file child is triggered individually.
+    Returns ``True`` if the trigger call succeeded without error.
     """
-    Trigger download of online-only file/folder.
-    
-    Returns:
-        True if download triggered successfully, False otherwise
-    """
+    if platform.system() == "Darwin":
+        return _trigger_download_macos(path)
+
+    # Linux: plain read, rglob for directories
     try:
-        # On most systems, simply accessing the file triggers download
         if path.is_file():
-            # Open file to trigger sync
             with open(path, 'rb') as f:
                 f.read(1)
-        else:
-            # For directories, list contents to trigger sync
-            list(path.iterdir())
-        
+        elif path.is_dir():
+            for child in path.rglob("*"):
+                try:
+                    if child.is_file() and not child.name.startswith('.'):
+                        with open(child, 'rb') as f:
+                            f.read(1)
+                except OSError:
+                    pass
         return True
-        
     except Exception:
         return False
+
+
+def _trigger_download_macos(path: Path) -> bool:
+    """Use NSFileCoordinator via a Swift subprocess to hydrate a placeholder.
+
+    NSFileCoordinator is the macOS-sanctioned API for triggering File Provider
+    downloads.  A coordinated read on a **file** causes the File Provider to
+    fetch its content.  For **directories**, coordinating a read on the
+    directory itself only retrieves the listing — the individual files inside
+    must each be coordinated separately to actually hydrate them.
+    """
+    if path.is_dir():
+        # Recursively collect all placeholder files under the directory
+        children = [
+            child for child in path.rglob("*")
+            if child.is_file()
+            and not child.name.startswith('.')
+            and _has_dropbox_placeholder_xattr(child)
+        ]
+        if not children:
+            return True  # nothing to download
+        # Build a Swift snippet that coordinates a read on each file in turn
+        paths_literal = "\n".join(f'    "{str(c)}",' for c in children)
+        swift_code = f"""
+import Foundation
+let paths: [String] = [
+{paths_literal}
+]
+for p in paths {{
+    let url = URL(fileURLWithPath: p)
+    let coordinator = NSFileCoordinator()
+    var err: NSError?
+    coordinator.coordinate(readingItemAt: url, options: .withoutChanges, error: &err) {{ u in
+        _ = try? Data(contentsOf: u)
+    }}
+}}
+"""
+    else:
+        # Single file
+        swift_code = f"""
+import Foundation
+let url = URL(fileURLWithPath: "{str(path)}")
+let coordinator = NSFileCoordinator()
+var err: NSError?
+coordinator.coordinate(readingItemAt: url, options: .withoutChanges, error: &err) {{ u in
+    _ = try? Data(contentsOf: u)
+}}
+"""
+    try:
+        result = subprocess.run(
+            ["swift", "-e", swift_code],
+            capture_output=True, text=True, timeout=60,
+        )
+        return result.returncode == 0
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+        # swift not available — fall back to plain open
+        try:
+            if path.is_file():
+                with open(path, 'rb') as f:
+                    f.read(1)
+            elif path.is_dir():
+                for child in path.iterdir():
+                    try:
+                        if child.is_file():
+                            with open(child, 'rb') as f:
+                                f.read(1)
+                    except OSError:
+                        pass
+            return True
+        except Exception:
+            return False
+
+
+def evict_to_online_only(path: Union[str, Path]) -> bool:
+    """Evict a locally-synced file or folder back to online-only (Smart Sync).
+
+    **Linux only** — uses the Dropbox CLI ``dropbox smart-sync online-only``
+    command which is available in the Linux Dropbox desktop client.
+
+    **macOS** — Dropbox does not register as an Apple File Provider domain
+    and exposes no public eviction API.  Use Finder instead:
+    right-click → Dropbox → Online only.
+
+    Args:
+        path: File or folder to evict.
+
+    Returns:
+        ``True`` if the eviction command succeeded, ``False`` otherwise.
+
+    Raises:
+        NotImplementedError: On macOS, where programmatic eviction is not
+            supported.
+        FileNotFoundError: If the Dropbox CLI is not found on Linux.
+    """
+    path = Path(path)
+    system = platform.system()
+
+    if system == "Darwin":
+        raise NotImplementedError(
+            "Programmatic eviction is not supported on macOS. "
+            "Use Finder: right-click the file → Dropbox → Online only."
+        )
+
+    if system != "Linux":
+        raise NotImplementedError(f"evict_to_online_only is not supported on {system}.")
+
+    # Linux: Dropbox CLI supports 'dropbox smart-sync online-only <path>'
+    for cli in _LINUX_CLI_CANDIDATES:
+        try:
+            result = subprocess.run(
+                [cli, "smart-sync", "online-only", str(path)],
+                capture_output=True, text=True, timeout=15,
+            )
+            if result.returncode == 0:
+                return True
+            # Some versions use positional order: path first, then mode
+            result2 = subprocess.run(
+                [cli, "smart-sync", str(path), "online-only"],
+                capture_output=True, text=True, timeout=15,
+            )
+            return result2.returncode == 0
+        except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+            continue
+
+    raise FileNotFoundError(
+        "Dropbox CLI not found. Install the Dropbox desktop client and ensure "
+        "'dropbox' is in your PATH."
+    )
 
 
 def auto_discover_paths(base_path: Union[str, Path], max_depth: int = 2) -> Dict[str, Path]:
@@ -319,17 +502,12 @@ def _path_to_attribute_name(name: str) -> str:
     # Remove leading/trailing underscores
     name = name.strip('_')
     
-    # If starts with number, move it to end
+    # If starts with a digit, prefix with 'num_' so the name is a valid
+    # Python identifier while still hinting at the original folder name.
+    # e.g. "2025_cruise" → "num_2025_cruise", "01_analysis" → "num_01_analysis"
     if name and name[0].isdigit():
-        # Find where numbers end
-        i = 0
-        while i < len(name) and name[i].isdigit():
-            i += 1
-        if i < len(name):
-            name = name[i:] + '_' + name[:i]
-        else:
-            name = 'folder_' + name
-    
+        name = 'num_' + name
+
     return name
 
 

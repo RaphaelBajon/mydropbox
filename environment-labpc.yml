@@ -1,6 +1,6 @@
-# Runtime environment — install this to use the library.
-# conda env create -f environment.yml
-name: mydropbox-env
+# Lab PC (Linux) environment — install this on the lab server.
+# conda env create -f environment-labpc.yml
+name: mydropbox-labpc
 channels:
   - conda-forge
   - defaults
