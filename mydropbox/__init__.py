@@ -15,9 +15,9 @@ __license__ = "MIT"
 from .project import ProjectPaths, create_project
 # Import dropbox management
 from .dropbox import get_dropbox, DropboxPaths, PersonalPaths, GroupPaths 
-from .dropbox.utils import check_sync_status, auto_discover_paths
+from .dropbox.utils import check_sync_status, evict_to_online_only, auto_discover_paths
 
-from .config.loadconfig import _load_config
+from .config.loadconfig import load_config
 
 __all__ = [
     "ProjectPaths",
@@ -26,14 +26,19 @@ __all__ = [
     "DropboxPaths",
     "PersonalPaths",
     "GroupPaths",
-    "check_sync_status", 
+    "check_sync_status",
+    "evict_to_online_only",
     "auto_discover_paths"
 ]
 
 
 # Initialize default dropbox instance
-_config = _load_config()
-dropbox = get_dropbox(
-    base_path=_config["base_path"],
-    personal_folder=_config["personal_folder"]
+# Named `default_dropbox` to avoid shadowing the `mydropbox.dropbox` subpackage,
+# which would break `from mydropbox.dropbox.utils import ...` on Linux.
+config = load_config()
+default_dropbox = get_dropbox(
+    base_path=config["base_path"],
+    personal_folder=config["personal_folder"]
 )
+# Keep `dropbox` as an alias for backwards compatibility
+dropbox = default_dropbox

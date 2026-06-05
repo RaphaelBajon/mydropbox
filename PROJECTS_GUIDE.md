@@ -113,9 +113,6 @@ project.expand(1)   # pick up the new folder
 project.manuscripts / "draft_v2.docx"
 ```
 
-**Should I commit data to Git?**
-No. The auto-generated `.gitignore` excludes `data/` and exploratory plots. Commit only code, notebooks, and publication figures.
-
 **How do I share processed data with the group?**
 ```python
 import shutil

@@ -10,6 +10,7 @@ dependencies:
   - numpy
   - matplotlib
   - pandas
+  - pyyaml
   - scipy            # used in tests
   - pytest
   - pytest-cov

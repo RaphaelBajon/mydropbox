@@ -1,3 +1,7 @@
+# MyDropbox configuration
+# Copy this file to ~/.mydropbox.yml (recommended) or ./mydropbox.yml
+# and fill in your values.  ~/.mydropbox.yml is never committed to Git.
+
 dropbox:
-  PERSONAL_FOLDER: Your name # your personal folder name in the group dropbox
-  DROPBOX_BASE_PATH: None # your group folder base path
+  PERSONAL_FOLDER: "Raphaël Bajon"          # your personal folder name in the group Dropbox
+  DROPBOX_BASE_PATH: None      # leave null for auto-detection

@@ -6,7 +6,7 @@ Thanks for your interest in improving this library! This guide will help you con
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/[GROUP_GITHUB]/mydropbox.git
+   git clone https://github.com/raphaelbajon/mydropbox.git
    cd mydropbox
    ```
 
@@ -45,7 +45,7 @@ If you find a bug or have a suggestion:
    - Update `CHANGELOG.md` under `[Unreleased]`
 4. **Test your changes**:
    ```bash
-   python examples.py
+   pytest tests/
    ```
 5. **Commit with clear messages**:
    ```bash
@@ -58,100 +58,42 @@ If you find a bug or have a suggestion:
 
 ### Code Style
 
-- Follow PEP 8 style guidelines
+- Follow PEP 8
 - Use clear, descriptive variable names
-- Add docstrings to all classes and functions
-- Keep functions focused and simple
+- Add docstrings to functions (summary + Args + Returns)
 - Use type hints where appropriate
-
-Example:
-```python
-def get_data_path(filename: str) -> Path:
-    """
-    Get the full path to a dataset file.
-    
-    Args:
-        filename: Name of the dataset file
-        
-    Returns:
-        Full Path object to the dataset
-        
-    Example:
-        >>> path = get_data_path("flux_2025.nc")
-    """
-    return dropbox.personal.datasets / filename
-```
 
 ## Adding New Paths
 
-If you need to add new folders to the library:
+Paths are auto-discovered — no code changes needed. Any new subfolder in Dropbox will be accessible as an attribute after calling `expand()` or reloading:
 
-1. **For personal paths**, edit the `PersonalPaths` class:
-   ```python
-   class PersonalPaths:
-       def __init__(self, base_path: Path):
-           self.base = base_path
-           # Add your new path here
-           self.new_folder = self.base / "new_folder_name"
-   ```
+```python
+db.group.datasets.expand(1)   # refresh one level deep
+db.group.datasets.my_new_folder  # now available
+```
 
-2. **For group paths**, edit the `GroupPaths` class similarly
-
-3. **Update README.md** to document the new path
+If you're adding support for a completely new Dropbox root (e.g. a second shared group folder), edit `mydropbox/dropbox/group_path.py` or `personal_path.py` and update `README.md`.
 
 4. **Update CHANGELOG.md** under `[Unreleased]` → `Added`
 
 ## Version Updates
 
-When you're ready to release a new version:
+When ready to release, follow the steps in [CHANGELOG.md](CHANGELOG.md):
 
-1. **Update version number** in:
-   - `setup.py` (line: `version="X.Y.Z"`)
-   - `mydropbox/__init__.py` (add `__version__ = "X.Y.Z"`)
-
-2. **Update CHANGELOG.md**:
-   - Move items from `[Unreleased]` to a new version section
-   - Add the date: `## [X.Y.Z] - YYYY-MM-DD`
-
-3. **Create a git tag**:
+1. **Update version** in `pyproject.toml`
+2. **Update CHANGELOG.md** — move items from `[Unreleased]` to a new `## [X.Y.Z] - YYYY-MM-DD` section
+3. **Tag and push**:
    ```bash
-   git tag -a v0.1.0 -m "Release version 0.1.0"
-   git push origin v0.1.0
+   git tag -a vX.Y.Z -m "Release vX.Y.Z"
+   git push origin main --tags
    ```
 
-## Version Numbering
-
-Use [Semantic Versioning](https://semver.org/):
-- **MAJOR** (X.0.0): Breaking changes (incompatible API changes)
-- **MINOR** (0.X.0): New features (backwards compatible)
-- **PATCH** (0.0.X): Bug fixes (backwards compatible)
-
-Examples:
-- `0.1.0` → `0.1.1`: Fixed a bug
-- `0.1.1` → `0.2.0`: Added new helper functions
-- `0.2.0` → `1.0.0`: Changed the API structure
+This project uses [Semantic Versioning](https://semver.org/): MAJOR.MINOR.PATCH.
 
 ## Testing
 
-Before submitting:
-1. Run the examples: `python docs/examples/examples.py` (:sleeping:)
-2. Test in your own scripts
-3. Check that paths resolve correctly
-4. Verify cross-platform compatibility if possible
-
-## Questions?
-
-- Open an issue for questions
-- Discuss in group meetings
-- Check the README.md for documentation
-
-## Code of Conduct
-
-- Be respectful and constructive
-- Help others learn and improve
-- Focus on the science and the code
-- Have fun! 🌊
+Before submitting: `pytest tests/`
 
 ---
 
-Thank you for contributing to the UHM Ocean BGC Group dropbox! 🙏
+Thank you for contributing to the UHM Ocean BGC Group dropbox!

@@ -1,202 +1,80 @@
 """
-Example usage of the MyDropbox Projects module for research organization
+examples_projects.py — MyDropbox project module examples.
+
+Run with:
+    python docs/examples/examples_projects.py
 """
 
-from mydropbox import get_dropbox, create_project
-from mydropbox.projects import ProjectPaths
-from pathlib import Path
 import tempfile
+from pathlib import Path
+
+import xarray as xr
+import matplotlib.pyplot as plt
+import numpy as np
+
+from mydropbox import get_dropbox, create_project
+from mydropbox.project.projects import ProjectPaths
 
 
-def example_1_create_new_project():
-    """Example 1: Create a new project with full structure."""
-    print("=" * 60)
-    print("Example 1: Creating a New Project")
-    print("=" * 60)
-    
-    with tempfile.TemporaryDirectory() as tmpdir:
-        # Simulate creating in Dropbox projects folder
-        base_path = Path(tmpdir)
-        
-        # Create the project
-        project = create_project(
-            base_path=base_path,
-            name="antarctic_carbon_flux_2026",
-            template="full",
-            description="Analysis of Antarctic carbon flux using BGC-Argo and satellite data",
-            author="Research Team"
-        )
-        
-        print(f"\nProject created: {project.base.name}")
-        print(f"Location: {project.base}")
-        print(f"\nKey directories:")
-        print(f"  Raw data:         {project.data.raw}")
-        print(f"  Processed data:   {project.data.processed}")
-        print(f"  Source code:      {project.src.base}")
-        print(f"  Notebooks:        {project.notebooks}")
-        print(f"  Publication plots: {project.plots.publication}")
-        print(f"\nFiles created:")
-        print(f"  ✓ README.md")
-        print(f"  ✓ .gitignore")
-        print(f"  ✓ project_metadata.json")
+db = get_dropbox(personal_folder="Your Name")
 
 
-def example_2_access_existing_project():
-    """Example 2: Access an existing project."""
-    print("\n" + "=" * 60)
-    print("Example 2: Accessing an Existing Project")
-    print("=" * 60)
-    
-    with tempfile.TemporaryDirectory() as tmpdir:
-        base_path = Path(tmpdir)
-        
-        # Create a project first
-        create_project(base_path, "my_analysis", template="simple")
-        
-        # Later, access it
-        project = ProjectPaths(base_path / "my_analysis")
-        
-        print(f"\nOpened project: {project}")
-        print(f"\nAvailable paths:")
-        print(f"  project.data.raw")
-        print(f"  project.data.interim")
-        print(f"  project.data.processed")
-        print(f"  project.src.base")
-        print(f"  project.notebooks")
-        print(f"  project.plots.base")
+# ── 1. Create a new project ───────────────────────────────────────────────────
+
+project = create_project(
+    base_path=db.personal.projects,
+    name="antarctic_carbon_2026",
+    template="full",          # "full" | "simple" | "minimal"
+    description="Antarctic carbon flux analysis",
+    author="Your Name",
+)
+
+# Standard paths are immediately available
+project.data.raw / "argo_floats.nc"
+project.plots.publication / "figure1.png"
+project.src.models / "flux_model.py"
 
 
-def example_3_save_dataset():
-    """Example 3: Save datasets to appropriate locations."""
-    print("\n" + "=" * 60)
-    print("Example 3: Saving Datasets")
-    print("=" * 60)
-    
-    with tempfile.TemporaryDirectory() as tmpdir:
-        project = create_project(Path(tmpdir), "data_processing", template="simple")
-        
-        # Simulate different data processing stages
-        print("\nData processing workflow:")
-        print("\n1. Raw data (original, immutable)")
-        print(f"   Save to: {project.data.raw}")
-        print("   Example: argo_floats_raw_2026.nc")
-        
-        print("\n2. Interim data (cleaned, but not final)")
-        print(f"   Save to: {project.data.interim}")
-        print("   Example: argo_floats_qc.nc")
-        
-        print("\n3. Processed data (analysis-ready)")
-        print(f"   Save to: {project.data.processed}")
-        print("   Example: argo_floats_monthly_means.nc")
-        
-        # Example with pandas
-        try:
-            import pandas as pd
-            df = pd.DataFrame({'flux': [1.2, 1.5, 1.3], 'temp': [15, 16, 15.5]})
-            saved_path = project.save_dataset(df, "example_data.csv", location="processed")
-            print(f"\n✓ Saved example data to: {saved_path}")
-        except ImportError:
-            print("\n(pandas not available, skipping save example)")
+# ── 2. Open an existing project ───────────────────────────────────────────────
+
+project = ProjectPaths(db.personal.projects / "antarctic_carbon_2026")
+ds = xr.open_dataset(project.data.processed / "soc_filtered.nc")
 
 
-def example_4_save_figures():
-    """Example 4: Save figures to exploratory vs publication folders."""
-    print("\n" + "=" * 60)
-    print("Example 4: Saving Figures")
-    print("=" * 60)
-    
-    with tempfile.TemporaryDirectory() as tmpdir:
-        project = create_project(Path(tmpdir), "visualization", template="full")
-        
-        print("\nFigure organization:")
-        print("\n1. Exploratory plots (quick checks, lower quality)")
-        print(f"   Save to: {project.plots.exploratory}")
-        print("   Example: quick_scatter.png (100 DPI)")
-        print("   Note: Add to .gitignore (not for publication)")
-        
-        print("\n2. Publication plots (high quality, version controlled)")
-        print(f"   Save to: {project.plots.publication}")
-        print("   Example: figure1_flux_map.png (300 DPI)")
-        print("   Note: Keep in Git, use for papers")
-        
-        # Example with matplotlib
-        try:
-            import matplotlib.pyplot as plt
-            import numpy as np
-            
-            fig, ax = plt.subplots()
-            ax.plot(np.random.randn(100))
-            ax.set_title("Example Plot")
-            
-            # Save exploratory
-            exp_path = project.save_figure(fig, "test_exploratory.png", 
-                                          location="exploratory", dpi=100)
-            print(f"\n✓ Saved exploratory: {exp_path.name}")
-            
-            # Save publication
-            pub_path = project.save_figure(fig, "test_publication.png", 
-                                          location="publication", dpi=300)
-            print(f"✓ Saved publication: {pub_path.name}")
-            
-            plt.close(fig)
-        except ImportError:
-            print("\n(matplotlib not available, skipping figure examples)")
+# ── 3. Save data ──────────────────────────────────────────────────────────────
+
+# auto-detects type: xarray / pandas / numpy / torch
+project.save_dataset(ds, "soc_filtered.nc", location="processed")
+
+# or use pathlib directly
+ds.to_netcdf(project.data.processed / "soc_filtered.nc")
 
 
-def example_5_list_datasets():
-    """Example 5: List all datasets in a project."""
-    print("\n" + "=" * 60)
-    print("Example 5: Listing Datasets")
-    print("=" * 60)
-    
-    with tempfile.TemporaryDirectory() as tmpdir:
-        project = create_project(Path(tmpdir), "data_inventory", template="simple")
-        
-        # Create some dummy files
-        (project.data.raw / "file1.nc").touch()
-        (project.data.raw / "file2.nc").touch()
-        (project.data.processed / "analysis1.nc").touch()
-        (project.data.processed / "analysis2.csv").touch()
-        
-        # List all NetCDF files
-        datasets = project.list_datasets(location="all", pattern="*.nc")
-        
-        print("\nNetCDF datasets in project:")
-        for location, files in datasets.items():
-            if files:
-                print(f"\n{location.upper()}:")
-                for f in files:
-                    print(f"  - {f.name}")
+# ── 4. Save figures ───────────────────────────────────────────────────────────
+
+fig, ax = plt.subplots()
+ax.plot(np.random.randn(100))
+
+project.save_figure(fig, "quick_check.png",      location="exploratory", dpi=100)
+project.save_figure(fig, "flux_timeseries.png",  location="publication",  dpi=300)
+plt.close(fig)
 
 
-def example_6_project_templates():
-    """Example 6: Different project templates."""
-    print("\n" + "=" * 60)
-    print("Example 6: Project Templates")
-    print("=" * 60)
-    
-    with tempfile.TemporaryDirectory() as tmpdir:
-        base = Path(tmpdir)
-        
-        # Minimal template
-        print("\n1. MINIMAL Template (data + src only)")
-        minimal = create_project(base, "minimal_project", template="minimal")
-        print(f"   Created: {len(list(minimal.base.rglob('*')))} files/folders")
-        
-        # Simple template
-        print("\n2. SIMPLE Template (essentials)")
-        simple = create_project(base, "simple_project", template="simple")
-        print(f"   Created: {len(list(simple.base.rglob('*')))} files/folders")
-        
-        # Full template
-        print("\n3. FULL Template (complete data science structure)")
-        full = create_project(base, "full_project", template="full")
-        print(f"   Created: {len(list(full.base.rglob('*')))} files/folders")
-        
-        print("\nRecommendations:")
-        print("  - Use MINIMAL for quick scripts")
-        print("  - Use SIMPLE for most analyses")
-        print("  - Use FULL for major projects or publications")
+# ── 5. Discover sub-folders added after creation ──────────────────────────────
+
+(project.base / "manuscripts").mkdir(exist_ok=True)
+project.expand(1)
+project.manuscripts / "draft_v2.docx"
+
+
+# ── 6. Share processed data with the group ────────────────────────────────────
+
+import shutil
+shutil.copy(
+    project.data.processed / "soc_filtered.nc",
+    db.group.datasets / "soc_filtered.nc",
+)
+
 
 
 def example_7_integration_with_dropbox():
