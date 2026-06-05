@@ -59,7 +59,11 @@ class DiscoverablePaths:
         child_depth = (self._max_depth - 1) if self._max_depth is not None else None
         discovered = auto_discover_paths(self._path, max_depth=1)
         for attr_name, path in discovered.items():
-            setattr(self, attr_name, DiscoverablePaths(path, max_depth=child_depth))
+            if path.is_dir():
+                setattr(self, attr_name, DiscoverablePaths(path, max_depth=child_depth))
+            else:
+                # Files are plain Path objects — no further chaining needed
+                setattr(self, attr_name, path)
 
     def expand(self, depth: int = 1) -> "DiscoverablePaths":
         """Discover additional levels below *this* node without touching the
@@ -87,14 +91,14 @@ class DiscoverablePaths:
         self._discover_all_paths()
         return self
 
-    def get_all_paths(self) -> Dict[str, "DiscoverablePaths"]:
-        """Return all immediately-discovered subdirectories as a
-        ``{name: DiscoverablePaths}`` dict."""
+    def get_all_paths(self) -> Dict[str, object]:
+        """Return all immediately-discovered children (dirs and files) as a
+        ``{name: DiscoverablePaths | Path}`` dict."""
         return {
             name: getattr(self, name)
             for name in self.__dict__
             if not name.startswith("_")
-            and isinstance(getattr(self, name), DiscoverablePaths)
+            and isinstance(getattr(self, name), (DiscoverablePaths, Path))
         }
 
     # ------------------------------------------------------------------

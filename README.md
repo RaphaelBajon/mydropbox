@@ -82,8 +82,14 @@ db.group.datasets.glob("*.nc")
 db.personal.projects.iterdir()
 db.personal.mycode.stat()
 
-# Path join
-file = db.group.datasets / "cruise_2025.nc"   # returns plain Path
+# Directories chain as attributes (DiscoverablePaths).
+# Files are plain pathlib.Path objects exposed the same way.
+# Dots in the extension become underscores: "cruise_2025.nc" → cruise_2025_nc
+db.group.datasets.cruise_2025_nc          # Path to cruise_2025.nc
+db.personal.mycode.analysis.compute_flux_py  # nested file
+
+# The / operator is equivalent and clearer for dynamic names:
+file = db.group.datasets / "cruise_2025.nc"
 ```
 
 ## Projects

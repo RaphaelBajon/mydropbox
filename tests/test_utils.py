@@ -252,12 +252,13 @@ class TestAutoDiscoverPaths:
         assert "datasets" in paths
         assert "group_notes" in paths
 
-    def test_skips_files(self, tmp_path):
+    def test_discovers_files_and_dirs(self, tmp_path):
+        """auto_discover_paths returns both files and directories."""
         (tmp_path / "subdir").mkdir()
         (tmp_path / "file.txt").write_text("data")
         paths = auto_discover_paths(tmp_path, max_depth=1)
         assert "subdir" in paths
-        assert "file" not in paths
+        assert "file_txt" in paths   # dots become underscores
 
     def test_nonexistent_base_returns_empty(self, tmp_path):
         paths = auto_discover_paths(tmp_path / "no_such_dir", max_depth=1)

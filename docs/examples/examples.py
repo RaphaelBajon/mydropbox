@@ -12,7 +12,7 @@ from mydropbox import get_dropbox, check_sync_status
 
 db = get_dropbox(personal_folder="Your Name")
 
-# Group folders
+# Group folders (DiscoverablePaths nodes)
 print(db.group.datasets)           # .../UHM_Ocean_BGC_Group/datasets
 print(db.group.group_notes)
 
@@ -20,9 +20,12 @@ print(db.group.group_notes)
 print(db.personal.mycode)          # .../Your Name/mycode
 print(db.personal.projects)
 
-# Build a file path (returns a plain pathlib.Path)
+# Directories chain as attributes; files in those directories are also accessible.
+# Dots in file extensions become underscores: "cruise_2025.nc" -> cruise_2025_nc
+print(db.group.datasets.cruise_2025_nc)  # plain Path to cruise_2025.nc
+
+# The / operator is equivalent and better for dynamic or unknown filenames:
 data_file = db.group.datasets / "cruise_2025.nc"
-script    = db.personal.mycode / "analysis" / "compute_flux.py"
 
 
 # ── 2. Discover deeper sub-folders ───────────────────────────────────────────
