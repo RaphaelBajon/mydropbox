@@ -41,11 +41,23 @@ db = get_dropbox(personal_folder="Raphaël Bajon")
 ```
 
 **Config file (recommended — keeps your name out of shared code)**
+```bash
+# 1. Copy the shipped template to your home directory
+cp mydropbox/config/config.yaml ~/.mydropbox.yaml
+# 2. Edit ~/.mydropbox.yaml and set PERSONAL_FOLDER: "Your Name"
+#    (~/.mydropbox.yaml is never committed to Git)
+```
 ```python
-# 1. Copy and edit: cp mydropbox_config_template.py mydropbox_config.py
-# 2. Set PERSONAL_FOLDER = "Your Name" in that file
-from mydropbox.config.mydropbox_config import PERSONAL_FOLDER
-db = get_dropbox(personal_folder=PERSONAL_FOLDER)
+# The pre-built `dropbox` instance reads ~/.mydropbox.yaml (or the env vars
+# below) automatically at import time — no arguments needed.
+from mydropbox import dropbox
+dropbox.personal.mycode
+```
+
+**Environment variables (useful for CI / the lab PC, no dotfile needed)**
+```bash
+export MYDROPBOX_PERSONAL_FOLDER="Your Name"
+export MYDROPBOX_BASE_PATH="/custom/path"   # optional
 ```
 
 **Group only**

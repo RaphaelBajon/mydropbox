@@ -6,13 +6,13 @@ and converting folders to project structures.
 """
 
 from pathlib import Path
-from typing import Union, Optional, List, Dict
+from typing import Union, Optional, List, Dict, Any
 import subprocess
 import platform
 import os
 
 
-def check_sync_status(path: Union[str, Path], download_if_online: bool = False) -> Dict[str, any]:
+def check_sync_status(path: Union[str, Path], download_if_online: bool = False) -> Dict[str, Any]:
     """
     Check if a file or folder is synced locally or online-only in Dropbox.
     

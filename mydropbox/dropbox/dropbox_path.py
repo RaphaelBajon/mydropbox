@@ -1,9 +1,16 @@
 from pathlib import Path
 from typing import Optional
 import os
+import warnings
 
 from .group_path import GroupPaths
 from .personal_path import PersonalPaths
+from ..config.loadconfig import load_config
+
+# Root of the lab PC mount. Personal Dropbox folders live at
+# ``_LAB_MOUNT_ROOT / <username> / "UHM_Ocean_BGC_Group Dropbox" / <Personal Folder Name>``,
+# a sibling of ``group_data`` (which holds the shared group Dropbox).
+_LAB_MOUNT_ROOT = Path("/mnt/md0")
 
 
 class DropboxPaths:
@@ -54,32 +61,40 @@ class DropboxPaths:
             else:
                 # Default fallback
                 self.base_path = Path.home() / "Dropbox" / "UHM_Ocean_BGC_Group Dropbox"
+                warnings.warn(
+                    "Could not auto-detect the Dropbox base path. Checked: "
+                    f"{[str(p) for p in possible_paths]}. Falling back to "
+                    f"'{self.base_path}', which may not exist. Pass base_path= "
+                    "explicitly, or set MYDROPBOX_BASE_PATH / ~/.mydropbox.yaml.",
+                    stacklevel=2,
+                )
         else:
             self.base_path = Path(base_path)
 
         # Initialize group paths (always available)
         self.group = GroupPaths(self.base_path, max_depth=group_depth)
-        
-        self._configure_for_labpc = False
-        self._configure_for_persopc = False
 
-        if self.group.parts[1] == 'mnt':
-            self._configure_for_labpc = True
-            path_lab_fixed = {
-                'Seth Bushinsky': 'seth',
-                'Raphaël Bajon': 'raph',
-                'Zachary Nachod': 'zach',
-                'Haichao Guo': 'haichao',
-                }
-        else:
-            self._configure_for_persopc = True
+        self._configure_for_labpc = self.base_path.is_relative_to(_LAB_MOUNT_ROOT)
+        self._configure_for_persopc = not self._configure_for_labpc
 
         # Initialize personal paths only if personal_folder is specified
         if personal_folder is not None and self._configure_for_persopc:
             self.personal = PersonalPaths(self.base_path / personal_folder, max_depth=personal_depth)
         elif personal_folder is not None and self._configure_for_labpc:
-            # On labpc, personal folders are under /mnt/md0/group_data/personal/
-            self.personal = PersonalPaths(self.base_path.parent.parent / path_lab_fixed[personal_folder] / "UHM_Ocean_BGC_Group Dropbox" / personal_folder, max_depth=personal_depth)
+            # On labpc, personal folders are a sibling of group_data:
+            # /mnt/md0/<username>/UHM_Ocean_BGC_Group Dropbox/<Personal Folder Name>
+            labpc_users = load_config().get("labpc_users", {})
+            if personal_folder not in labpc_users:
+                raise ValueError(
+                    f"No labpc username configured for personal_folder='{personal_folder}'. "
+                    f"Known names: {sorted(labpc_users)}. Add yourself to the 'labpc_users' "
+                    "section of ~/.mydropbox.yaml (or the package config.yaml)."
+                )
+            username = labpc_users[personal_folder]
+            self.personal = PersonalPaths(
+                self.base_path.parent.parent / username / "UHM_Ocean_BGC_Group Dropbox" / personal_folder,
+                max_depth=personal_depth,
+            )
         else:
             self.personal = None
 
