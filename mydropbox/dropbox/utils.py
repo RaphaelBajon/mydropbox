@@ -6,13 +6,13 @@ and converting folders to project structures.
 """
 
 from pathlib import Path
-from typing import Union, Optional, List, Dict
+from typing import Union, Optional, List, Dict, Any
 import subprocess
 import platform
 import os
 
 
-def check_sync_status(path: Union[str, Path], download_if_online: bool = False) -> Dict[str, any]:
+def check_sync_status(path: Union[str, Path], download_if_online: bool = False) -> Dict[str, Any]:
     """
     Check if a file or folder is synced locally or online-only in Dropbox.
     
@@ -453,16 +453,19 @@ def auto_discover_paths(base_path: Union[str, Path], max_depth: int = 2) -> Dict
         
         try:
             for item in directory.iterdir():
-                if item.is_dir():
-                    # Convert folder name to valid attribute name
-                    attr_name = _path_to_attribute_name(item.name)
-                    
-                    # Store path
-                    discovered[attr_name] = item
-                    
-                    # Recurse if not at max depth
-                    if current_depth < max_depth:
-                        _scan_directory(item, current_depth + 1)
+                if item.name.startswith('.'):
+                    continue
+                # Convert name to a valid Python identifier.
+                # Dots in file extensions become underscores, e.g.
+                # "cruise_2025.nc" -> "cruise_2025_nc".
+                attr_name = _path_to_attribute_name(item.name)
+
+                # Store path (files and directories alike)
+                discovered[attr_name] = item
+
+                # Recurse into directories if not at max depth
+                if item.is_dir() and current_depth < max_depth:
+                    _scan_directory(item, current_depth + 1)
                         
         except PermissionError:
             # Skip directories we can't access

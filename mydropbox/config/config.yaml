@@ -1,7 +1,22 @@
 # MyDropbox configuration
-# Copy this file to ~/.mydropbox.yml (recommended) or ./mydropbox.yml
-# and fill in your values.  ~/.mydropbox.yml is never committed to Git.
+#
+# This file is the package-shipped DEFAULT and template — it intentionally has no
+# real personal values, so installing the package never leaks anyone's identity to
+# other users. Copy it to ~/.mydropbox.yaml (recommended) or ./mydropbox.yaml and
+# fill in your own values there. ~/.mydropbox.yaml is never committed to Git.
 
 dropbox:
-  PERSONAL_FOLDER: "Raphaël Bajon"          # your personal folder name in the group Dropbox
-  DROPBOX_BASE_PATH: None      # leave null for auto-detection
+  PERSONAL_FOLDER: null        # your personal folder name in the group Dropbox
+  DROPBOX_BASE_PATH: null      # leave null for auto-detection
+
+# Shared lab-wide map of display name -> labpc username, used to resolve personal
+# folders on the lab PC (/mnt/md0/<username>/UHM_Ocean_BGC_Group Dropbox/<Name>).
+# Unlike PERSONAL_FOLDER above, this isn't private — it's the same for everyone in
+# the group, so it's safe to keep populated in the package default. Add new lab
+# members here (in your own ~/.mydropbox.yaml, or by editing this file) rather than
+# in source code.
+labpc_users:
+  Seth Bushinsky: seth
+  Raphaël Bajon: raph
+  Zachary Nachod: zach
+  Haichao Guo: haichao

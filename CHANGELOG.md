@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-08-16
+
+### Fixed
+- Package-shipped `config/config.yaml` no longer hardcodes a real `PERSONAL_FOLDER` —
+  it ships as `null` so installing the package never silently leaks one user's
+  identity to teammates who haven't set up their own `~/.mydropbox.yaml`
+- Labpc personal-folder resolution: the hardcoded `path_lab_fixed` name→username dict
+  (a bare `KeyError` for any unlisted lab member) is replaced by a `labpc_users`
+  mapping loaded from config, so new lab members are added via config, not source
+- Site detection (`labpc` vs personal computer) no longer relies on fragile
+  index-based `path.parts[1] == 'mnt'`; uses `base_path.is_relative_to(...)` against
+  the known lab mount root instead
+- `DropboxPaths` now warns (`warnings.warn`) instead of silently falling back to a
+  probably-nonexistent path when Dropbox base-path auto-detection finds nothing
+- Restored `MYDROPBOX_PERSONAL_FOLDER` / `MYDROPBOX_BASE_PATH` environment variable
+  overrides in `load_config()` (highest priority, above the YAML file) — this existed
+  before the 0.2.0 YAML rewrite and had been silently dropped
+- `check_sync_status`'s return type annotation now uses `typing.Any` instead of the
+  builtin `any`
+
+### Changed
+- README's "Config file" section now documents the actual YAML-based mechanism
+  (`~/.mydropbox.yaml`) instead of a `mydropbox_config_template.py` module that never
+  existed
+
+### Removed
+- `tests/test_mydropbox.py`, a pre-0.2.0 file left behind after its contents were
+  split into `test_discoverable_paths.py` / `test_dropbox_paths.py` /
+  `test_project_paths.py` / `test_utils.py`
+
 ## [0.2.0] - 2026-05-28
 
 ### Added

@@ -78,7 +78,10 @@ class TestRealDropboxBase:
 
     def test_group_children_exist_on_disk(self, db):
         for name, node in db.group.get_all_paths().items():
-            assert node._path.exists(), f"group.{name} path does not exist: {node._path}"
+            if isinstance(node, DiscoverablePaths):
+                assert node._path.exists(), f"group.{name} path does not exist: {node._path}"
+            else:
+                assert node.exists(), f"group.{name} path does not exist: {node}"
 
     def test_default_dropbox_instance(self):
         """The module-level ``dropbox`` object must point at a real folder."""
@@ -106,7 +109,10 @@ class TestRealPersonalPaths:
         if db.personal is None:
             pytest.skip("No personal_folder configured")
         for name, node in db.personal.get_all_paths().items():
-            assert node._path.exists(), f"personal.{name} does not exist: {node._path}"
+            if isinstance(node, DiscoverablePaths):
+                assert node._path.exists(), f"personal.{name} does not exist: {node._path}"
+            else:
+                assert node.exists(), f"personal.{name} does not exist: {node}"
 
 
 class TestRealPathlib:
@@ -131,12 +137,13 @@ class TestRealPathlib:
         )
         # Before expand: grandchildren not loaded
         for child in fresh.group.get_all_paths().values():
-            assert child._max_depth == 0
+            if isinstance(child, DiscoverablePaths):
+                assert child._max_depth == 0
         # After expand: grandchildren present for at least one child
         fresh.group.expand(2)
         found_grandchild = any(
             len(child.get_all_paths()) > 0
             for child in fresh.group.get_all_paths().values()
-            if child._path.exists()
+            if isinstance(child, DiscoverablePaths) and child._path.exists()
         )
         assert found_grandchild, "expand(2) found no grandchildren under any group sub-folder"
