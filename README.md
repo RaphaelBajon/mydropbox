@@ -60,6 +60,12 @@ export MYDROPBOX_PERSONAL_FOLDER="Your Name"
 export MYDROPBOX_BASE_PATH="/custom/path"   # optional
 ```
 
+**Auto-identify via the Dropbox SDK (no name needed at all)**
+```python
+db = get_dropbox(auto_identify=True)  # personal_folder resolved from your Dropbox account
+```
+See [docs/DROPBOX_SDK_SETUP.md](docs/DROPBOX_SDK_SETUP.md) for setup (`pip install mydropbox[sdk]` + a token).
+
 **Group only**
 ```python
 db = get_dropbox()   # personal is None

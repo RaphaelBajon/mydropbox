@@ -26,7 +26,7 @@ jobs:
       - name: Install package + dev dependencies
         run: |
           pip install --upgrade pip
-          pip install pyyaml xarray numpy matplotlib pandas scipy pytest pytest-cov
+          pip install pyyaml xarray numpy matplotlib pandas scipy pytest pytest-cov dropbox
           pip install -e .
 
       - name: Run tests

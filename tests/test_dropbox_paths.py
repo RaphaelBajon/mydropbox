@@ -2,6 +2,7 @@
 
 import pytest
 
+from mydropbox import identify
 from mydropbox.dropbox.base_path import DiscoverablePaths
 from mydropbox.dropbox.dropbox_path import get_dropbox
 
@@ -54,3 +55,30 @@ class TestDepthParams:
         assert isinstance(db.group.group, DiscoverablePaths)
         assert "datasets" not in db.group.group.__dict__
         assert isinstance(db.personal.projects.project_01.data, DiscoverablePaths)
+
+
+class TestAutoIdentify:
+    def test_explicit_personal_folder_skips_resolver(self, tmp_dropbox, monkeypatch):
+        """auto_identify=True must be a no-op when personal_folder is already given."""
+        def _boom():
+            raise AssertionError("resolve_personal_folder should not have been called")
+
+        monkeypatch.setattr(identify, "resolve_personal_folder", _boom)
+        db = get_dropbox(base_path=str(tmp_dropbox), personal_folder="My Name", auto_identify=True)
+        assert db.personal.name == "My Name"
+
+    def test_resolves_personal_folder_via_sdk(self, tmp_dropbox, monkeypatch):
+        monkeypatch.setattr(identify, "resolve_personal_folder", lambda: "My Name")
+        db = get_dropbox(base_path=str(tmp_dropbox), auto_identify=True)
+        assert db.personal.name == "My Name"
+        assert db.personal._path == tmp_dropbox / "My Name"
+
+    def test_mismatch_between_resolved_name_and_disk_raises(self, tmp_dropbox, monkeypatch):
+        monkeypatch.setattr(identify, "resolve_personal_folder", lambda: "Nobody Here")
+        with pytest.raises(RuntimeError, match="auto_identify resolved your Dropbox account name"):
+            get_dropbox(base_path=str(tmp_dropbox), auto_identify=True)
+
+    def test_auto_identify_false_ignores_missing_personal_folder(self, tmp_dropbox):
+        """Default behavior (auto_identify=False) is unaffected: no personal_folder -> None."""
+        db = get_dropbox(base_path=str(tmp_dropbox))
+        assert db.personal is None

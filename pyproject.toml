@@ -20,6 +20,9 @@ science = [
     "matplotlib",
     "pandas",
 ]
+sdk = [
+    "dropbox",
+]
 dev = [
     "xarray",
     "numpy",
@@ -29,6 +32,7 @@ dev = [
     "pytest",
     "pytest-cov",
     "ruff",
+    "dropbox",
 ]
 
 [tool.setuptools.packages.find]

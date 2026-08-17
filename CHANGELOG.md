@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `auto_identify` option on `get_dropbox()` / `DropboxPaths` — resolves
+  `personal_folder` automatically from the Dropbox account's display name via
+  the official `dropbox` SDK, instead of requiring it to be passed or
+  configured by hand. Opt-in only (default `False`); no-op when
+  `personal_folder` is already provided. Requires
+  `pip install mydropbox[sdk]` and a `MYDROPBOX_SDK_TOKEN` access token — see
+  `docs/DROPBOX_SDK_SETUP.md`. Raises a clear error if the resolved account
+  name doesn't match any folder on disk, rather than guessing.
+- New `sdk` optional-dependency group (`dropbox`) in `pyproject.toml`.
+
 ## [0.2.1] - 2026-08-16
 
 ### Fixed
